@@ -12,13 +12,15 @@
     "old-vercel-build": "prisma generate && prisma migrate deploy && next build",
     "postinstall": "prisma generate",
     "lint": "eslint .",
+    "test": "vitest run",
     "import:exercises-full": "tsx scripts/import-exercises-with-attributes.ts",
     "db:seed": "pnpm run import:exercises-full ./data/sample-exercises.csv",
     "db:seed-plans": "tsx scripts/seed-subscription-plans-simple.ts",
     "db:seed-workout-advanced": "tsx scripts/seed-workout-data-advanced.ts",
     "lint:fix": "next lint --fix",
     "db:seed-leaderboard": "tsx scripts/seed-leaderboard-data.ts",
-    "migrate:prod": "env-cmd -f .env.production prisma migrate deploy"
+    "migrate:prod": "env-cmd -f .env.production prisma migrate deploy",
+    "db:seed-demo": "tsx scripts/seed-demo-user.ts"
   },
   "resolutions": {
     "prettier": "^3.4.2"
@@ -143,6 +145,7 @@
     "tslog": "^4.9.3",
     "tsx": "^4.19.4",
     "typescript": "^5",
-    "typescript-eslint": "^8.29.0"
+    "typescript-eslint": "^8.29.0",
+    "vitest": "^3.2.4"
   }
 }

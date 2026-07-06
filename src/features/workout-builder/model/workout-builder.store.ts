@@ -6,10 +6,16 @@ import { shuffleExerciseAction } from "../actions/shuffle-exercise.action";
 import { pickExerciseAction } from "../actions/pick-exercise.action";
 import { getExercisesAction } from "../actions/get-exercises.action";
 
+import type { TrainingGoal, DaysPerWeek } from "@/features/training-science/model/types";
+
 interface WorkoutBuilderState {
   currentStep: WorkoutBuilderStep;
   selectedEquipment: ExerciseAttributeValueEnum[];
   selectedMuscles: ExerciseAttributeValueEnum[];
+
+  // Training science: goal + split
+  selectedGoal: TrainingGoal;
+  selectedDaysPerWeek: DaysPerWeek | null;
 
   exercisesByMuscle: any[]; //TODO: type this
   isLoadingExercises: boolean;
@@ -25,6 +31,8 @@ interface WorkoutBuilderState {
   clearEquipment: () => void;
   toggleMuscle: (muscle: ExerciseAttributeValueEnum) => void;
   clearMuscles: () => void;
+  setGoal: (goal: TrainingGoal) => void;
+  setDaysPerWeek: (days: DaysPerWeek | null) => void;
   fetchExercises: () => Promise<void>;
   setExercisesOrder: (order: string[]) => void;
   setExercisesByMuscle: (exercisesByMuscle: any[]) => void;
@@ -46,6 +54,8 @@ export const useWorkoutBuilderStore = create<WorkoutBuilderState>((set, get) => 
   currentStep: 1 as WorkoutBuilderStep,
   selectedEquipment: [],
   selectedMuscles: [],
+  selectedGoal: "general" as TrainingGoal,
+  selectedDaysPerWeek: null,
   exercisesByMuscle: [],
   isLoadingExercises: false,
   exercisesError: null,
@@ -67,10 +77,13 @@ export const useWorkoutBuilderStore = create<WorkoutBuilderState>((set, get) => 
   toggleMuscle: (muscle) =>
     set((state) => ({
       selectedMuscles: state.selectedMuscles.includes(muscle)
-        ? state.selectedMuscles.filter((m) => m !== muscle)
-        : [...state.selectedMuscles, muscle],
-    })),
+      ? state.selectedMuscles.filter((m) => m !== muscle)
+      : [...state.selectedMuscles, muscle],
+  })),
   clearMuscles: () => set({ selectedMuscles: [] }),
+
+  setGoal: (goal) => set({ selectedGoal: goal }),
+  setDaysPerWeek: (days) => set({ selectedDaysPerWeek: days }),
 
   fetchExercises: async () => {
     set({ isLoadingExercises: true, exercisesError: null });

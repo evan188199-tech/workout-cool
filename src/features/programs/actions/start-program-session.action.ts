@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/shared/lib/prisma";
 import { auth } from "@/features/auth/lib/better-auth";
+import { applyProgressionOverlay, type OverlayExerciseInput } from "@/features/training-science/model/progression-overlay";
+import { loadUserSetEntries } from "@/features/workout-analytics/actions/load-set-entries";
 
 export async function startProgramSession(enrollmentId: string, sessionId: string) {
   const session = await auth.api.getSession({
@@ -99,9 +101,28 @@ export async function startProgramSession(enrollmentId: string, sessionId: strin
 
   revalidatePath(`/programs/${enrollment.program.slug}`);
 
+  // Apply progression overlay: adjust suggested sets/weights based on the user's
+  // real training history (plateau detection + ACWR deload). Falls back to the
+  // static program data if the user has no history.
+  let overlayResult = null;
+  try {
+    const history = await loadUserSetEntries(userId, 120);
+    const overlayInputs: OverlayExerciseInput[] = programSession.exercises.flatMap((ex) =>
+      ex.suggestedSets.map(() => ({
+        exerciseId: ex.exerciseId,
+        suggestedSets: ex.suggestedSets.length,
+        suggestedWeightKg: 0,
+      })),
+    );
+    overlayResult = applyProgressionOverlay(overlayInputs, history);
+  } catch (e) {
+    // Fail safe: overlay is a bonus, not critical.
+  }
+
   return {
     sessionProgress,
     isNew: true,
     sessionData: programSession,
+    overlay: overlayResult,
   };
 }

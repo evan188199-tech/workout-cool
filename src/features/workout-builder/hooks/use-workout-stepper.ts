@@ -7,6 +7,8 @@ export function useWorkoutStepper() {
     currentStep,
     selectedEquipment,
     selectedMuscles,
+    selectedGoal,
+    selectedDaysPerWeek,
     exercisesByMuscle,
     isLoadingExercises,
     exercisesError,
@@ -19,6 +21,8 @@ export function useWorkoutStepper() {
     clearEquipment,
     toggleMuscle,
     clearMuscles,
+    setGoal,
+    setDaysPerWeek,
     fetchExercises,
     setExercisesOrder,
     shuffleExercise,
@@ -31,53 +35,32 @@ export function useWorkoutStepper() {
   const canProceedToStep3 = selectedMuscles.length > 0;
 
   return {
-    // state
     currentStep,
     selectedEquipment,
     selectedMuscles,
-
-    // exercises
+    selectedGoal,
+    selectedDaysPerWeek,
     exercisesByMuscle,
     isLoadingExercises,
     exercisesError,
-
-    // navigation
     goToStep: setStep,
     nextStep,
     prevStep,
-
-    // equipment
     toggleEquipment,
     clearEquipment,
-
-    // muscles
     toggleMuscle,
     clearMuscles,
-
-    // validation
+    setGoal,
+    setDaysPerWeek,
     canProceedToStep2,
     canProceedToStep3,
-
-    // fetch
     fetchExercises,
-
-    // order
     exercisesOrder,
     setExercisesOrder,
-
-    // shuffle
     shuffleExercise,
-
-    // additional
     shufflingExerciseId,
-
-    // pick
     pickExercise,
-
-    // delete
     deleteExercise,
-
-    // load
     loadFromSession,
   };
 }

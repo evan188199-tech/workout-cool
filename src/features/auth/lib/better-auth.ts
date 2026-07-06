@@ -123,10 +123,10 @@ export const auth = betterAuth({
     },
     enabled: true,
   },
-  socialProviders: {
-    google: {
-      enabled: true,
-      clientId: env.GOOGLE_CLIENT_ID,
+ socialProviders: {
+   google: {
+      enabled: env.GOOGLE_CLIENT_ID.length > 0 && env.GOOGLE_CLIENT_SECRET.length > 0,
+     clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
       mapProfileToUser: async (profile) => {
         return {

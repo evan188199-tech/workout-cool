@@ -37,6 +37,11 @@ yarn-error.log*
 .env.test
 .env.development
 .env.production
+.env*.local
+
+# local data imports (keep public sample, ignore large personal datasets)
+/data/exercises-import.csv
+/data/exercises-dataset.json
 
 # vercel
 .vercel
@@ -53,3 +58,15 @@ scripts/personal/
 product-development/
 .claude/
 .cache/
+
+# logs & terminal captures
+screenlog.*
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# os / editor cruft
+.DS_Store
+Thumbs.db

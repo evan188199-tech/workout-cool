@@ -24,18 +24,38 @@ export function CredentialsLoginForm({ className, ...props }: React.ComponentPro
 
   const { signIn } = useSignIn();
 
-  const { register, handleSubmit, formState } = useForm({ resolver: zodResolver(loginSchema) });
+  const { register, handleSubmit, setValue, formState } = useForm({ resolver: zodResolver(loginSchema) });
   const { errors, isSubmitting } = formState;
 
   async function onSubmit(values: LoginSchema) {
     return signIn(values);
   }
 
+  const fillDemoCredentials = () => {
+    setValue("email", "demo@workout.local");
+    setValue("password", "123123123");
+  };
+
   return (
     <div className="space-y-6">
       {isResetSuccess && (
         <Alert variant="success">
           <AlertDescription>{t("commons.password_reset_success")}</AlertDescription>
+        </Alert>
+      )}
+
+      {process.env.NODE_ENV === "development" && (
+        <Alert>
+          <AlertDescription className="flex flex-col gap-1 text-sm">
+            <span className="font-medium">Local demo account</span>
+            <span>
+              email: <code className="bg-muted rounded px-1">demo@workout.local</code>
+              {" "}· password: <code className="bg-muted rounded px-1">123123123</code>
+            </span>
+            <button type="button" onClick={fillDemoCredentials} className="text-left text-xs underline underline-offset-4">
+              Fill credentials automatically
+            </button>
+          </AlertDescription>
         </Alert>
       )}
 

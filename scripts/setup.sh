@@ -14,6 +14,10 @@ if [ "$SEED_SAMPLE_DATA" = "true"  ]; then
     else
         echo "No exercises sample data found, skipping import."
     fi
+
+    # Create fixed local demo accounts so login works without sign-up / OAuth.
+    echo "Seeding local demo accounts (no external services required)..."
+    npx tsx scripts/seed-demo-user.ts
 else
   echo "Skipping sample data import."
 fi

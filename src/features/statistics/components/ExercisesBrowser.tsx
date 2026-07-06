@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Search, X } from "lucide-react";
+import { Play, Search, X } from "lucide-react";
 import debounce from "lodash.debounce";
 import { useQuery } from "@tanstack/react-query";
 import { ExerciseAttributeNameEnum, ExerciseAttributeValueEnum } from "@prisma/client";
@@ -339,16 +339,27 @@ export const ExercisesBrowser = () => {
 
               {/* Exercise Image */}
               <div className="bg-base-200 rounded-lg p-4 mb-4">
-                <div className="max-h-48 bg-base-200 rounded-lg flex items-center justify-center overflow-hidden aspect-video border border-gray-400 dark:border-gray-700">
+               <div className="max-h-48 bg-base-200 rounded-lg flex items-center justify-center overflow-hidden aspect-video border border-gray-400 dark:border-gray-700">
                   {selectedExercise.fullVideoImageUrl ? (
-                    <Image
-                      alt={selectedExercise.name}
-                      className="object-cover cursor-pointer aspect-video scale-115 justify-center place-self-center"
-                      height={200}
+                    <button
+                      type="button"
                       onClick={openVideoModal}
-                      src={selectedExercise.fullVideoImageUrl}
-                      width={300}
-                    />
+                      className="relative group flex items-center justify-center w-full h-full"
+                      aria-label={`Play video for ${selectedExercise.name}`}
+                    >
+                      <Image
+                        alt={selectedExercise.name}
+                        className="object-contain aspect-video w-full h-full max-h-48"
+                        height={200}
+                        src={selectedExercise.fullVideoImageUrl}
+                        width={300}
+                      />
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors">
+                        <span className="flex items-center justify-center w-12 h-12 rounded-full bg-white/90 group-hover:bg-white text-black shadow-lg transition-transform group-hover:scale-110">
+                          <Play className="w-5 h-5 ml-0.5 fill-current" />
+                        </span>
+                      </span>
+                    </button>
                   ) : (
                     <div className="text-center">
                       <p className="text-gray-500">{t("statistics.no_image_available")}</p>

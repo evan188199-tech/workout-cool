@@ -17,6 +17,9 @@ import { ExercisesSelection } from "./exercises-selection";
 import { EquipmentSelection } from "./equipment-selection";
 import { AddExerciseModal } from "./add-exercise-modal";
 
+import { GoalSplitSelection } from "./goal-split-selection";
+import { generateSplit } from "@/features/training-science/model/split-generator";
+
 import type { ExerciseWithAttributes, WorkoutBuilderStep } from "../types";
 
 import useBoolean from "@/shared/hooks/useBoolean";
@@ -57,6 +60,7 @@ export function WorkoutStepper() {
     goToStep,
     deleteExercise,
   } = useWorkoutStepper();
+  const { selectedGoal, selectedDaysPerWeek, setGoal, setDaysPerWeek } = useWorkoutStepper();
   useEffect(() => {
     loadSessionFromLocal();
   }, []);
@@ -245,11 +249,19 @@ export function WorkoutStepper() {
     switch (currentStep) {
       case 1:
         return (
+          <div className="space-y-6">
+            <GoalSplitSelection
+              selectedGoal={selectedGoal}
+              selectedDaysPerWeek={selectedDaysPerWeek}
+              onGoalChange={setGoal}
+              onDaysChange={setDaysPerWeek}
+            />
           <EquipmentSelection
             onClearEquipment={handleClearEquipment}
             onToggleEquipment={handleToggleEquipment}
             selectedEquipment={selectedEquipment}
           />
+          </div>
         );
       case 2:
         return (

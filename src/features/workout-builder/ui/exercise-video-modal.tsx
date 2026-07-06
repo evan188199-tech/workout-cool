@@ -39,6 +39,11 @@ export function ExerciseVideoModal({ open, onOpenChange, exercise, defaultTab = 
   const description = locale === "fr" ? exercise.description : exercise.descriptionEn || exercise.description;
   const videoUrl = exercise.fullVideoUrl;
   const youTubeEmbedUrl = getYouTubeEmbedUrl(videoUrl ?? "");
+  // Strip query string/hash so ".gif?x=1" still matches
+  const videoPath = (videoUrl ?? "").split("?")[0].split("#")[0].toLowerCase();
+  const isGifMedia = videoPath.endsWith(".gif");
+  // If the main URL isn't a GIF/image but a poster image exists, prefer it as an animated preview
+  const gifUrl = isGifMedia ? videoUrl : exercise.fullVideoImageUrl;
 
   const type = getExerciseAttributesValueOf(exercise, ExerciseAttributeNameEnum.TYPE);
   const pMuscles = getExerciseAttributesValueOf(exercise, ExerciseAttributeNameEnum.PRIMARY_MUSCLE);
@@ -102,19 +107,24 @@ export function ExerciseVideoModal({ open, onOpenChange, exercise, defaultTab = 
 
             {/* Vidéo */}
             <div className="w-full aspect-video bg-black flex items-center justify-center">
-              {videoUrl ? (
-                youTubeEmbedUrl ? (
-                  <iframe
-                    allow="autoplay; encrypted-media"
-                    allowFullScreen
-                    className="w-full h-full border-0"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    src={youTubeEmbedUrl}
-                    title={title ?? ""}
-                  />
-                ) : (
-                  <video autoPlay className="w-full h-full object-contain bg-black" controls poster="" src={videoUrl} />
-                )
+              {youTubeEmbedUrl ? (
+                <iframe
+                  allow="autoplay; encrypted-media"
+                  allowFullScreen
+                  className="w-full h-full border-0"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  src={youTubeEmbedUrl}
+                  title={title ?? ""}
+                />
+              ) : gifUrl ? (
+                <img
+                  alt={title ?? ""}
+                  className="w-full h-full object-contain bg-black"
+                  loading="lazy"
+                  src={gifUrl}
+                />
+              ) : videoUrl ? (
+                <video autoPlay className="w-full h-full object-contain bg-black" controls loop muted playsInline src={videoUrl} />
               ) : (
                 <div className="text-white text-center p-8">{t("workout_builder.exercise.no_video_available")}</div>
               )}
