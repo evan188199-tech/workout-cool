@@ -262,16 +262,38 @@ export async function getRecommendedDay(): Promise<DayRecommendationResult | nul
   };
 }
 
-/** Increment completed sessions counter when a workout finishes. */
-export async function incrementCompletedSessions(): Promise<void> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  const userId = session?.user?.id;
-  if (!userId) return;
+/**
+ * Record a completed plan session: bump the lifetime counter and advance the
+ * "next recommended day" pointer.
+ *
+ * Only workouts tied to a split day (splitDay >= 1) move the plan — free-mode
+ * sessions don't belong to any day, so they are tracked separately and ignored
+ * here. The caller must guarantee this is the *first* time the session counts
+ * (e.g. only when the WorkoutSession is newly created in the DB), so a re-sync
+ * of the same session never double-counts.
+ *
+ * @param userId  Owner of the training plan.
+ * @param splitDay 1-based split day that was just completed (null/0 = skip).
+ */
+export async function recordCompletedSession(
+  userId: string,
+  splitDay: number | null | undefined,
+): Promise<void> {
+  if (!splitDay || splitDay < 1) return;
 
-  await prisma.userTrainingPlan.update({
-    where: { userId },
-    data: {
-      completedSessions: { increment: 1 },
-    },
-  }).catch(() => {});
+  const plan = await prisma.userTrainingPlan.findUnique({ where: { userId } });
+  if (!plan || !plan.isActive) return;
+
+  // Advance to the next day in the split, wrapping back to day 1.
+  const nextDay = splitDay >= plan.daysPerWeek ? 1 : splitDay + 1;
+
+  await prisma.userTrainingPlan
+    .update({
+      where: { userId },
+      data: {
+        completedSessions: { increment: 1 },
+        currentDay: nextDay,
+      },
+    })
+    .catch(() => {});
 }

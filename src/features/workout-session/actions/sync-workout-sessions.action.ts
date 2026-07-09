@@ -8,6 +8,7 @@ import { prisma } from "@/shared/lib/prisma";
 import { ALL_WORKOUT_SET_TYPES, WORKOUT_SET_UNITS_TUPLE } from "@/shared/constants/workout-set-types";
 import { ERROR_MESSAGES } from "@/shared/constants/errors";
 import { actionClient } from "@/shared/api/safe-actions";
+import { recordCompletedSession } from "@/features/training-science/actions/training-plan.action";
 
 const workoutSetSchema = z.object({
   id: z.string(),
@@ -75,6 +76,13 @@ export const syncWorkoutSessionAction = actionClient.schema(syncWorkoutSessionSc
 
     const { status: _s, ...sessionData } = session;
 
+    // Detect a first-time persistence so the training-plan counter is only
+    // advanced once, even if the same completed session is re-synced.
+    const existingSession = await prisma.workoutSession.findUnique({
+      where: { id: session.id },
+      select: { id: true },
+    });
+
     const result = await prisma.workoutSession.upsert({
       where: { id: session.id },
       create: {
@@ -121,6 +129,16 @@ export const syncWorkoutSessionAction = actionClient.schema(syncWorkoutSessionSc
     });
 
     console.log("✅ Workout session synced successfully:", result.id);
+
+    // A newly-created, finished, plan-day session advances the training plan
+    // (counter + next-day pointer). Free-mode (splitDay = null) sessions and
+    // re-syncs of an already-stored session are intentionally skipped.
+    const isFinished = session.status === "completed" || session.status === "synced";
+    if (!existingSession && isFinished && session.splitDay) {
+      await recordCompletedSession(session.userId, session.splitDay).catch((error) => {
+        console.error("Failed to record completed plan session:", error);
+      });
+    }
 
     return { data: result };
   } catch (error) {
