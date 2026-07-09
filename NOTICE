@@ -1,0 +1,71 @@
+==========================================================================
+Workout.cool - Third-party attribution and rights notice
+==========================================================================
+
+This NOTICE supplements the MIT LICENSE that covers the source code in
+this repository. It documents the provenance and rights status of the
+exercise dataset used by the optional import tooling. None of the
+dataset files described below are committed to this repository (see
+.gitignore); they are obtained and converted locally at the operator's
+own discretion.
+
+--------------------------------------------------------------------------
+1. Source code
+--------------------------------------------------------------------------
+
+All source code is licensed under the MIT License (see ./LICENSE),
+Copyright (c) 2023 Mathias Bradiceanu.
+
+--------------------------------------------------------------------------
+2. Exercise metadata (names, muscles, equipment, English instructions)
+--------------------------------------------------------------------------
+
+Source:    ExerciseDB v1 by AscendAPI
+           https://oss.exercisedb.dev  (API docs: /docs)
+Obtained via a Kaggle re-host by omarxadel:
+           https://www.kaggle.com/datasets/omarxadel/fitness-exercises-dataset
+Mirror used by the import tooling:
+           https://github.com/hasaneyldrm/exercises-dataset
+
+The original free-exercise-database metadata (yuhonal/free-exercise-database)
+is distributed under the MIT License. The hasaneyldrm/exercises-dataset mirror
+that the conversion script consumes does NOT declare a license (license field
+is null), so reuse rights beyond personal use are not granted by the mirror.
+
+Review ExerciseDB's terms (https://oss.exercisedb.dev/docs) before any
+redistribution or commercial reuse.
+
+--------------------------------------------------------------------------
+3. Exercise media (thumbnail images and animation GIFs)
+--------------------------------------------------------------------------
+
+NOT INCLUDED in this repository. The conversion script builds hotlinks to
+the ExerciseDB CDN (https://static.exercisedb.dev/media/{media_id}.gif)
+from the media_id field, for LOCAL development only.
+
+There are multiple, conflicting ownership claims over this media. It is not
+licensed by this project and MUST NOT be redistributed or used in a
+production/commercial deployment without obtaining the appropriate rights
+from the media owner. Use at your own risk; see the rights header in
+scripts/convert-exercisedb-dataset.ts.
+
+--------------------------------------------------------------------------
+4. Multilingual instruction translations (ES, IT, TR, RU, ZH)
+--------------------------------------------------------------------------
+
+The non-English instruction texts were added by the
+hasaneyldrm/exercises-dataset maintainer. Because that repository declares
+no license, these translations are NOT licensed for reuse beyond personal
+use. The conversion script keeps them for local development only. Do not
+redistribute them without explicit permission from their author.
+
+--------------------------------------------------------------------------
+5. Disclaimer
+--------------------------------------------------------------------------
+
+This project does not claim ownership of any third-party exercise content,
+media, or translations. The import tooling is provided as a convenience for
+local development and self-hosting. Operators are responsible for ensuring
+they have the necessary rights for any content they import and serve. If
+you are a rights holder and want something removed or clarified, please
+open an issue.

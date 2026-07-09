@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:15
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    env_file: .env
+
+  # The app is run locally with `pnpm dev` (or `pnpm start` after build),
+  # so the containerized build is disabled to avoid port conflicts and stale images.
+  # Re-enable by uncommenting the block below if you want the containerized app.
+  # workout_cool:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "${APP_PORT:-3000}:3000"
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   env_file: .env
+volumes:
+  pgdata:
