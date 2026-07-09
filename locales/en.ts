@@ -2055,7 +2055,6 @@ export default {
     // StatisticsPreviewOverlay
     premium_statistics: "Premium Statistics",
     premium_statistics_description: "Get detailed insights into your fitness journey with advanced analytics for each exercise.",
-    total_volume: "Total Volume",
     pr_increase: "PR Increase",
     weight_progress: "Weight Progress",
     upgrade_now: "Upgrade Now",
