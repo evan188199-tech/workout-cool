@@ -25,14 +25,33 @@ interface GoalSplitSelectionProps {
 }
 
 const INTENT_OPTIONS: { value: UserIntent; icon: typeof Dumbbell; label: string }[] = [
-  { value: "build_strength", icon: Dumbbell, label: "Get stronger" },
-  { value: "build_muscle", icon: Zap, label: "Build muscle" },
-  { value: "lose_fat", icon: Flame, label: "Lose fat" },
-  { value: "improve_endurance", icon: Heart, label: "Endurance" },
-  { value: "general_fitness", icon: Target, label: "Stay fit" },
+  { value: "build_strength", icon: Dumbbell, label: "workout_builder.goal_strength" },
+  { value: "build_muscle", icon: Zap, label: "workout_builder.goal_hypertrophy" },
+  { value: "lose_fat", icon: Flame, label: "workout_builder.goal_endurance" },
+  { value: "improve_endurance", icon: Heart, label: "workout_builder.goal_endurance" },
+  { value: "general_fitness", icon: Target, label: "workout_builder.goal_general" },
 ];
 
 const DAYS_OPTIONS: DaysPerWeek[] = [2, 3, 4, 5];
+
+const SPLIT_LABEL_KEYS: Record<string, string> = {
+  "training_science.split.fullbody_a": "workout_builder.split_fullbody_1",
+  "training_science.split.fullbody_b": "workout_builder.split_fullbody_2",
+  "training_science.split.push": "workout_builder.split_ppl_1",
+  "training_science.split.pull": "workout_builder.split_ppl_2",
+  "training_science.split.legs": "workout_builder.split_ppl_3",
+  "training_science.split.upper_a": "workout_builder.split_upperlower_1",
+  "training_science.split.lower_a": "workout_builder.split_upperlower_2",
+  "training_science.split.upper_b": "workout_builder.split_upperlower_3",
+  "training_science.split.lower_b": "workout_builder.split_upperlower_4",
+  "training_science.split.upper": "workout_builder.split_ppl-ul_4",
+  "training_science.split.lower_core": "workout_builder.split_ppl-ul_5",
+};
+
+const getSplitLabel = (t: ReturnType<typeof useI18n>, labelKey: string) => {
+  const translatedKey = SPLIT_LABEL_KEYS[labelKey];
+  return t((translatedKey ?? (labelKey as keyof typeof t)) as keyof typeof t);
+};
 
 export function GoalSplitSelection({
   selectedIntent,
@@ -42,12 +61,13 @@ export function GoalSplitSelection({
   selectedSplitDay,
   onSelectSplitDay,
 }: GoalSplitSelectionProps) {
+  const t = useI18n();
   return (
     <div className="space-y-6">
       <div>
         <h3 className="mb-3 text-sm font-semibold text-slate-600 dark:text-slate-400">
           <Target className="inline h-4 w-4 mr-1.5" />
-          What is your goal?
+          {t("workout_builder.goal_select")}
         </h3>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {INTENT_OPTIONS.map((opt) => {
@@ -66,7 +86,7 @@ export function GoalSplitSelection({
               >
                 <Icon className={cn("h-6 w-6", isSelected ? "text-emerald-500" : "text-slate-400")} />
                 <span className={cn("text-xs font-medium", isSelected ? "text-emerald-700 dark:text-emerald-300" : "text-slate-600 dark:text-slate-400")}>
-                  {opt.label}
+                  {t(opt.label as keyof typeof t)}
                 </span>
               </button>
             );
@@ -77,7 +97,7 @@ export function GoalSplitSelection({
       <div>
         <h3 className="mb-3 text-sm font-semibold text-slate-600 dark:text-slate-400">
           <Calendar className="inline h-4 w-4 mr-1.5" />
-          Days per week
+          {t("workout_builder.days_select")}
         </h3>
         <div className="flex flex-wrap gap-2">
           {DAYS_OPTIONS.map((days) => (
@@ -125,7 +145,7 @@ function SplitPreview({
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400">
-        Pick today&apos;s training day
+        {t("workout_builder.split_preview")}
       </h3>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {split.days.map((day, idx) => {
@@ -154,7 +174,7 @@ function SplitPreview({
                       {isSelected ? <Check className="h-3 w-3" /> : day.dayNumber}
                     </span>
                     <span className="text-sm font-semibold capitalize">
-                      {day.labelKey.split(".").pop()?.replace(/_/g, " ")}
+                      {getSplitLabel(t, day.labelKey)}
                     </span>
                   </div>
                 </div>
@@ -178,7 +198,7 @@ function SplitPreview({
         })}
       </div>
       <p className="text-xs text-slate-400">
-        Tap a day to load its muscles. You can fine-tune them in the next step.
+        {t("workout_builder.goal_split.selection_hint")}
       </p>
     </div>
   );

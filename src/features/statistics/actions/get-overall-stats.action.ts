@@ -139,7 +139,7 @@ export const getOverallStatsAction = actionClient.schema(getOverallStatsSchema).
 
     const volumeTrend = [...weeklyVolume.values()]
       .sort((a, b) => a.weekStart.localeCompare(b.weekStart))
-      .map((w) => ({ week: w.weekStart, totalVolume: Math.round(w.totalVolume), setCount: w.setCount, workoutCount: w.workoutCount.size }));
+      .map((w) => ({ week: w.weekStart, weekStart: w.weekStart, totalVolume: Math.round(w.totalVolume), setCount: w.setCount }));
 
     const topExercises = [...exerciseVolumeMap.entries()]
       .map(([id, data]) => ({ id, ...data }))

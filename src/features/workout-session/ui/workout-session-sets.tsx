@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Check, Play, ArrowRight, Trophy as TrophyIcon, Plus, Hourglass } from "lucide-react";
+import { Check, Play, ArrowRight, Trophy as TrophyIcon, Plus, Hourglass, ArrowDown } from "lucide-react";
 import { useCurrentLocale, useI18n } from "locales/client";
 import confetti from "canvas-confetti";
 import TrophyImg from "@public/images/trophy.png";
@@ -22,6 +22,7 @@ import { useSyncWorkoutSessions } from "@/features/workout-session/model/use-syn
 import { ExerciseVideoModal } from "@/features/workout-builder/ui/exercise-video-modal";
 import { useSyncFavoriteExercises } from "@/features/workout-builder/hooks/use-sync-favorite-exercises";
 import { getStretchesAction } from "@/features/training-science/actions/get-stretches.action";
+import { STRETCH_HOLD_SECONDS, WARMUP_REPS } from "@/features/training-science/model/stretch-routine";
 import { env } from "@/env";
 import { PremiumUpsellAlert } from "@/components/ui/premium-upsell-alert";
 import { Button } from "@/components/ui/button";
@@ -39,8 +40,18 @@ export function WorkoutSessionSets({
   const t = useI18n();
   const router = useRouter();
   const locale = useCurrentLocale();
-  const { currentExerciseIndex, session, addSet, updateSet, removeSet, finishSet, goToNextExercise, goToExercise, completeWorkout } =
-    useWorkoutSession();
+  const {
+    currentExerciseIndex,
+    session,
+    sessionPrescription,
+    addSet,
+    updateSet,
+    removeSet,
+    finishSet,
+    goToNextExercise,
+    goToExercise,
+    completeWorkout,
+  } = useWorkoutSession();
   const exerciseDetailsMap = Object.fromEntries(session?.exercises.map((ex) => [ex.id, ex]) || []);
   const [videoModal, setVideoModal] = useState<{ open: boolean; exerciseId?: string }>({ open: false });
  const { syncSessions } = useSyncWorkoutSessions();
@@ -53,18 +64,49 @@ export function WorkoutSessionSets({
   const [cooldownStretches, setCooldownStretches] = useState<ExerciseWithAttributes[]>([]);
   const [completedWarmup, setCompletedWarmup] = useState<Set<string>>(new Set());
   const [completedCooldown, setCompletedCooldown] = useState<Set<string>>(new Set());
+  const warmupMetricValue = `${sessionPrescription?.warmupReps ?? WARMUP_REPS} ${t("workout_builder.session.reps")}`;
+  const cooldownMetricValue = `${sessionPrescription?.cooldownHoldSeconds ?? STRETCH_HOLD_SECONDS} ${t(
+    "workout_builder.session.time_unit_seconds",
+  )}`;
+  const warmupCompletedCount = completedWarmup.size;
+  const cooldownCompletedCount = completedCooldown.size;
 
   const sessionMuscles = (session?.muscles as ExerciseAttributeValueEnum[]) ?? [];
 
   useEffect(() => {
     if (sessionMuscles.length === 0) return;
-    getStretchesAction({ muscles: sessionMuscles, phase: "warmup" }).then((res) => {
+    const warmupRoutine = sessionPrescription?.warmupRoutineEnabled
+      ? getStretchesAction({
+          muscles: sessionMuscles,
+          phase: "warmup",
+          count: sessionPrescription.warmupExerciseCount,
+          warmupReps: sessionPrescription.warmupReps,
+        })
+      : Promise.resolve({ data: [] as ExerciseWithAttributes[] });
+    const cooldownRoutine = sessionPrescription?.cooldownRoutineEnabled
+      ? getStretchesAction({
+          muscles: sessionMuscles,
+          phase: "cooldown",
+          count: sessionPrescription.cooldownExerciseCount,
+          cooldownHoldSeconds: sessionPrescription.cooldownHoldSeconds,
+        })
+      : Promise.resolve({ data: [] as ExerciseWithAttributes[] });
+
+    warmupRoutine.then((res) => {
       if (res?.data) setWarmupStretches(res.data);
     });
-    getStretchesAction({ muscles: sessionMuscles, phase: "cooldown" }).then((res) => {
+    cooldownRoutine.then((res) => {
       if (res?.data) setCooldownStretches(res.data);
     });
-  }, [sessionMuscles.join(",")]);
+  }, [
+    sessionMuscles.join(","),
+    sessionPrescription?.warmupRoutineEnabled,
+    sessionPrescription?.warmupExerciseCount,
+    sessionPrescription?.warmupReps,
+    sessionPrescription?.cooldownRoutineEnabled,
+    sessionPrescription?.cooldownExerciseCount,
+    sessionPrescription?.cooldownHoldSeconds,
+  ]);
 
   const toggleStretchComplete = (exerciseId: string, phase: "warmup" | "cooldown") => {
     const setter = phase === "warmup" ? setCompletedWarmup : setCompletedCooldown;
@@ -74,6 +116,24 @@ export function WorkoutSessionSets({
       else next.add(exerciseId);
       return next;
     });
+  };
+
+  const markAllStretchComplete = (phase: "warmup" | "cooldown") => {
+    if (phase === "warmup") {
+      setCompletedWarmup(new Set(warmupStretches.map((exercise) => exercise.id)));
+      return;
+    }
+
+    setCompletedCooldown(new Set(cooldownStretches.map((exercise) => exercise.id)));
+  };
+
+  const clearAllStretchComplete = (phase: "warmup" | "cooldown") => {
+    if (phase === "warmup") {
+      setCompletedWarmup(new Set());
+      return;
+    }
+
+    setCompletedCooldown(new Set());
   };
 
   // auto-scroll to current exercise when index changes (but not when adding sets)
@@ -106,21 +166,25 @@ export function WorkoutSessionSets({
   }, [currentExerciseIndex, session]);
 
  if (showCongrats) {
-   return (
+  return (
      <div className="flex flex-col items-center justify-center py-16 h-full">
-       <Image alt={t("workout_builder.session.complete") + " trophy"} className="w-56 h-56" src={TrophyImg} />
+       <Image alt={t("workout_builder.session.congrats_image_alt")} className="w-56 h-56" src={TrophyImg} />
        <h2 className="text-2xl font-bold mb-2">{t("workout_builder.session.complete") + " ! 🎉"}</h2>
        <p className="text-lg text-slate-600 mb-6">{t("workout_builder.session.workout_in_progress")}</p>
         {cooldownStretches.length > 0 && (
           <div className="w-full max-w-2xl mb-6 px-3">
-            <StretchRoutineSection
-              completedIds={completedCooldown}
-              onToggleComplete={(id) => toggleStretchComplete(id, "cooldown")}
-              phase="cooldown"
-              stretches={cooldownStretches}
-            />
-          </div>
-        )}
+        <StretchRoutineSection
+          completedIds={completedCooldown}
+          onToggleComplete={(id) => toggleStretchComplete(id, "cooldown")}
+          onMarkAllComplete={() => markAllStretchComplete("cooldown")}
+          onClearAllComplete={() => clearAllStretchComplete("cooldown")}
+          phase="cooldown"
+          stretches={cooldownStretches}
+          metricValue={cooldownMetricValue}
+          metricLabel={t("workout_builder.session.stretch_hold")}
+        />
+      </div>
+    )}
        <Button onClick={() => router.push("/profile")}>{t("commons.go_to_profile")}</Button>
      </div>
    );
@@ -138,17 +202,22 @@ export function WorkoutSessionSets({
 
   const renderStepIcon = (idx: number, allSetsCompleted: boolean) => {
     if (allSetsCompleted) {
-      return <Check aria-label="Exercice terminé" className="w-4 h-4 text-white" />;
+      return <Check aria-label={t("workout_builder.session.exercise_completed")} className="w-4 h-4 text-white" />;
     }
     if (idx === currentExerciseIndex) {
       return (
-        <svg aria-label="Exercice en cours" className="w-8 h-8 animate-ping text-emerald-500" fill="currentColor" viewBox="0 0 24 24">
+        <svg
+          aria-label={t("workout_builder.session.current_exercise")}
+          className="w-8 h-8 animate-ping text-emerald-500"
+          fill="currentColor"
+          viewBox="0 0 24 24"
+        >
           <circle cx="12" cy="12" r="12" />
         </svg>
       );
     }
 
-    return <Hourglass aria-label="Exercice en cours" className="w-4 h-4 text-gray-600 dark:text-slate-900" />;
+    return <Hourglass aria-label={t("workout_builder.session.exercise_pending")} className="w-4 h-4 text-gray-600 dark:text-slate-900" />;
   };
 
   const renderStepBackground = (idx: number, allSetsCompleted: boolean) => {
@@ -185,17 +254,81 @@ export function WorkoutSessionSets({
     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
   };
 
+  const scrollToStretchSection = (phase: "warmup" | "cooldown") => {
+    const anchor = phase === "warmup" ? "warmup-stretch-routine" : "cooldown-stretch-routine";
+    const target = document.getElementById(anchor);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   return (
     <div className="w-full max-w-3xl mx-auto pb-8 px-3 sm:px-6">
      <div className="mb-6">
        <PremiumUpsellAlert />
      </div>
+      {(sessionPrescription?.warmupRoutineEnabled || sessionPrescription?.cooldownRoutineEnabled) ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+          {sessionPrescription?.warmupRoutineEnabled && (
+            <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 dark:border-orange-900/60 dark:bg-orange-950/30">
+              <div className="text-[11px] text-orange-700 dark:text-orange-300">
+                {t("workout_builder.session.warmup_title")}
+              </div>
+              <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                {warmupStretches.length > 0
+                  ? `${warmupCompletedCount}/${warmupStretches.length} ${t("workout_builder.session.progress")}`
+                  : t("workout_builder.session.prescription_feature_disabled")}
+              </div>
+              {warmupStretches.length > 0 ? (
+                <button
+                  className="mt-2 inline-flex items-center gap-1 text-[11px] text-orange-700 underline underline-offset-2 hover:text-orange-900"
+                  onClick={() => {
+                    scrollToStretchSection("warmup");
+                  }}
+                  type="button"
+                >
+                  <ArrowDown className="h-3 w-3" />
+                  {t("workout_builder.session.warmup_title")}
+                </button>
+              ) : null}
+            </div>
+          )}
+          {sessionPrescription?.cooldownRoutineEnabled && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-900/60 dark:bg-blue-950/30">
+              <div className="text-[11px] text-blue-700 dark:text-blue-300">
+                {t("workout_builder.session.cooldown_title")}
+              </div>
+              <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                {cooldownStretches.length > 0
+                  ? `${cooldownCompletedCount}/${cooldownStretches.length} ${t("workout_builder.session.progress")}`
+                  : t("workout_builder.session.prescription_feature_disabled")}
+              </div>
+              {cooldownStretches.length > 0 ? (
+                <button
+                  className="mt-2 inline-flex items-center gap-1 text-[11px] text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                  onClick={() => {
+                    scrollToStretchSection("cooldown");
+                  }}
+                  type="button"
+                >
+                  <ArrowDown className="h-3 w-3" />
+                  {t("workout_builder.session.cooldown_title")}
+                </button>
+              ) : null}
+            </div>
+          )}
+        </div>
+      ) : null}
       {warmupStretches.length > 0 && (
         <StretchRoutineSection
           completedIds={completedWarmup}
           onToggleComplete={(id) => toggleStretchComplete(id, "warmup")}
+          onMarkAllComplete={() => markAllStretchComplete("warmup")}
+          onClearAllComplete={() => clearAllStretchComplete("warmup")}
           phase="warmup"
           stretches={warmupStretches}
+          metricValue={warmupMetricValue}
+          metricLabel={t("workout_builder.session.stretch_reps")}
         />
       )}
       <ol className="relative border-l-2 ml-2 border-slate-200 dark:border-slate-700">
@@ -231,7 +364,7 @@ export function WorkoutSessionSets({
                     }}
                   >
                     <Image
-                      alt={exerciseName || "Exercise image"}
+                      alt={exerciseName || t("workout_builder.session.exercise_image_alt")}
                       className="w-full h-full object-cover scale-[1.35]"
                       height={48}
                       src={details.fullVideoImageUrl}
@@ -299,7 +432,7 @@ export function WorkoutSessionSets({
                   {/* Actions bas de page */}
                   <div className="flex flex-col md:flex-row gap-3 w-full mt-2 px-2">
                     <Button
-                      aria-label="Ajouter une série"
+                      aria-label={t("workout_builder.session.add_set")}
                       className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl border border-green-600 transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-green-400"
                       onClick={handleAddSet}
                     >
@@ -307,7 +440,7 @@ export function WorkoutSessionSets({
                       {t("workout_builder.session.add_set")}
                     </Button>
                     <Button
-                      aria-label="Exercice suivant"
+                      aria-label={t("workout_builder.session.next_exercise")}
                       className="flex-1 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl border border-blue-600 transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-blue-400"
                       onClick={handleNextExercise}
                     >

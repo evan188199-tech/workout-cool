@@ -20,7 +20,7 @@ import { ExerciseAttributeValueEnum } from "@prisma/client";
  */
 
 /** Supported quick-session durations. */
-export type QuickTimeBudget = 5 | 10 | 15;
+export type QuickTimeBudget = 5 | 10 | 15 | 20 | 25;
 
 /** Muscles that work well in a low-intensity bodyweight quick loop. */
 const QUICK_CANDIDATE_MUSCLES: ExerciseAttributeValueEnum[] = [
@@ -43,6 +43,16 @@ const BUDGET_TO_EXERCISES: Record<QuickTimeBudget, number> = {
   5: 4,
   10: 7,
   15: 9,
+  20: 12,
+  25: 14,
+};
+
+const BUDGET_TO_REST_SECONDS: Record<QuickTimeBudget, number> = {
+  5: 20,
+  10: 30,
+  15: 45,
+  20: 60,
+  25: 60,
 };
 
 export interface QuickSessionInput {
@@ -51,6 +61,8 @@ export interface QuickSessionInput {
   plannedMusclesToday: ExerciseAttributeValueEnum[];
   /** Muscles already hit by a quick session earlier today. */
   recentQuickMusclesToday: ExerciseAttributeValueEnum[];
+  /** Rest preference can tune the quick-plan set scheme if user wants longer pauses. */
+  preferredRestSeconds?: number;
 }
 
 export interface QuickMuscleAllocation {
@@ -63,6 +75,8 @@ export interface QuickSetScheme {
   /** Non-null turns the set into a timed hold instead of a rep count. */
   holdSeconds: number | null;
   targetReps: number;
+  /** Pause length (seconds) after each set for this quick session. */
+  restAfterSetSeconds: number;
 }
 
 export interface QuickSessionResult {
@@ -85,7 +99,7 @@ export interface QuickSessionResult {
  *    snack rather than a real session.
  */
 export function recommendQuickSession(input: QuickSessionInput): QuickSessionResult {
-  const { timeBudgetMin, plannedMusclesToday, recentQuickMusclesToday } = input;
+  const { timeBudgetMin, plannedMusclesToday, recentQuickMusclesToday, preferredRestSeconds } = input;
   const target = BUDGET_TO_EXERCISES[timeBudgetMin];
 
   const avoidSet = new Set<ExerciseAttributeValueEnum>([...plannedMusclesToday, ...recentQuickMusclesToday]);
@@ -133,8 +147,11 @@ export function recommendQuickSession(input: QuickSessionInput): QuickSessionRes
   // Short sessions use a single timed hold; longer ones use two standard sets.
   const setScheme: QuickSetScheme =
     timeBudgetMin === 5
-      ? { setsPerExercise: 1, holdSeconds: 40, targetReps: 12 }
-      : { setsPerExercise: 2, holdSeconds: null, targetReps: 12 };
+      ? { setsPerExercise: 1, holdSeconds: 40, targetReps: 12, restAfterSetSeconds: BUDGET_TO_REST_SECONDS[timeBudgetMin] }
+      : { setsPerExercise: 2, holdSeconds: null, targetReps: 12, restAfterSetSeconds: BUDGET_TO_REST_SECONDS[timeBudgetMin] };
+  const resolvedRestAfterSetSeconds = preferredRestSeconds
+    ? Math.max(preferredRestSeconds, setScheme.restAfterSetSeconds)
+    : setScheme.restAfterSetSeconds;
 
   const reason =
     fresh.length > 0
@@ -143,7 +160,15 @@ export function recommendQuickSession(input: QuickSessionInput): QuickSessionRes
         : `Focused on muscles not in today's plan; ${avoided.length} planned muscle${avoided.length > 1 ? "s were" : " was"} kept light.`
       : "Every target muscle is in today's plan — generated a light movement snack (one exercise each).";
 
-  return { muscles, totalExercises, setScheme, reason };
+  return {
+    muscles,
+    totalExercises,
+    setScheme: {
+      ...setScheme,
+      restAfterSetSeconds: resolvedRestAfterSetSeconds,
+    },
+    reason,
+  };
 }
 
 /** Convenience for tests / UI: the curated candidate pool size. */

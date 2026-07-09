@@ -42,7 +42,7 @@ export function WorkoutSessionList() {
       refetch();
     } catch (error) {
       console.error("Error deleting session:", error);
-      alert("Error deleting session");
+      alert(t("workout_builder.session.error_delete_session"));
     }
   };
 

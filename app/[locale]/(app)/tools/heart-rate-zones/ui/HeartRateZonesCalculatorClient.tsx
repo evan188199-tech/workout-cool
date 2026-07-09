@@ -168,7 +168,7 @@ export function HeartRateZonesCalculatorClient({ defaultAge = 30, defaultResults
             {/* Global zones visualization */}
             <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
               <div className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                {t("tools.heart-rate-zones.results.overview")}
+                {t("tools.heart-rate-zones.results.overview", {})}
               </div>
               <div className="relative h-8 bg-white dark:bg-gray-600 rounded-full overflow-hidden">
                 {results.zones.map((zone) => (

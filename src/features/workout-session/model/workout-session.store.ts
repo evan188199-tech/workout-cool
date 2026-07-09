@@ -1,13 +1,17 @@
 import { create } from "zustand";
 
+import type { QuickSetScheme } from "@/features/training-science/model/quick-session";
+
 import { workoutSessionLocal } from "@/shared/lib/workout-session/workout-session.local";
-import { WorkoutSession } from "@/shared/lib/workout-session/types/workout-session";
+import {
+  type WorkoutSession,
+  type WorkoutSessionPrescription,
+} from "@/shared/lib/workout-session/types/workout-session";
 import { convertWeight, type WeightUnit } from "@/shared/lib/weight-conversion";
 import { WorkoutSessionExercise, WorkoutSet, WorkoutSetType, WorkoutSetUnit } from "@/features/workout-session/types/workout-set";
 import { useWorkoutBuilderStore } from "@/features/workout-builder/model/workout-builder.store";
-import { isBodyweightExercise } from "@/entities/exercise/shared/exercise-type";
-import type { QuickSetScheme } from "@/features/training-science/model/quick-session";
 import { ExerciseWithAttributes } from "@/entities/exercise/types/exercise.types";
+import { isBodyweightExercise } from "@/entities/exercise/shared/exercise-type";
 
 interface WorkoutSessionProgress {
   exerciseId: string;
@@ -20,6 +24,7 @@ interface WorkoutSessionProgress {
 }
 
 interface WorkoutSessionState {
+  sessionPrescription: WorkoutSessionPrescription | null;
   session: WorkoutSession | null;
   progress: Record<string, WorkoutSessionProgress>;
   elapsedTime: number;
@@ -34,9 +39,19 @@ interface WorkoutSessionState {
   progressPercent: number;
 
   // Actions
-  startWorkout: (exercises: ExerciseWithAttributes[] | WorkoutSessionExercise[], equipment: any[], muscles: any[], splitDay?: number | null, setScheme?: QuickSetScheme | null) => void;
+  startWorkout: (
+    exercises: ExerciseWithAttributes[] | WorkoutSessionExercise[],
+    equipment: any[],
+    muscles: any[],
+    splitDay?: number | null,
+    targetDurationMinutes?: number,
+    setScheme?: QuickSetScheme | null,
+    prescription?: WorkoutSessionPrescription,
+  ) => void;
   quitWorkout: () => void;
   completeWorkout: () => void;
+  setElapsedTime: (seconds: number) => void;
+  setTargetDurationSeconds: (seconds: number) => void;
   toggleTimer: () => void;
   resetTimer: () => void;
   updateExerciseProgress: (exerciseId: string, progressData: Partial<WorkoutSessionProgress>) => void;
@@ -61,9 +76,11 @@ interface WorkoutSessionState {
   startRest: (seconds: number) => void;
   stopRest: () => void;
   tickRest: () => void;
+  adjustRest: (secondsDelta: number) => void;
 }
 
 export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => ({
+  sessionPrescription: null,
   session: null,
   progress: {},
   elapsedTime: 0,
@@ -79,6 +96,18 @@ export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => 
   isRestActive: false,
   startRest: (seconds) => set({ restSeconds: seconds, isRestActive: true }),
   stopRest: () => set({ restSeconds: 0, isRestActive: false }),
+  adjustRest: (secondsDelta) =>
+    set((state) => {
+      if (!state.isRestActive || state.restSeconds <= 0) {
+        return { restSeconds: state.restSeconds };
+      }
+
+      const next = Math.max(0, state.restSeconds + secondsDelta);
+      if (next <= 0) {
+        return { restSeconds: 0, isRestActive: false };
+      }
+      return { restSeconds: next };
+    }),
   tickRest: () => {
     const { restSeconds, isRestActive } = get();
     if (!isRestActive || restSeconds <= 0) return;
@@ -89,7 +118,26 @@ export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => 
     }
   },
 
-  startWorkout: (exercises, _equipment, muscles, splitDay, setScheme?) => {
+  startWorkout: (
+    exercises,
+    _equipment,
+    muscles,
+    splitDay,
+    targetDurationMinutes,
+    setScheme?,
+    prescription,
+  ) => {
+    const resolvedPrescription: WorkoutSessionPrescription = {
+      restIntervalSeconds: prescription?.restIntervalSeconds ?? 30,
+      warmupRoutineEnabled: prescription?.warmupRoutineEnabled ?? true,
+      warmupExerciseCount: prescription?.warmupExerciseCount ?? 3,
+      warmupReps: prescription?.warmupReps ?? 10,
+      cooldownRoutineEnabled: prescription?.cooldownRoutineEnabled ?? true,
+      cooldownExerciseCount: prescription?.cooldownExerciseCount ?? 2,
+      cooldownHoldSeconds: prescription?.cooldownHoldSeconds ?? 30,
+      quickSetRestAfterSetSeconds: setScheme?.restAfterSetSeconds,
+      targetDurationSeconds: targetDurationMinutes ? targetDurationMinutes * 60 : undefined,
+    };
     const sessionExercises: WorkoutSessionExercise[] = exercises.map((ex, idx) => {
       // Check if exercise already has sets (from program)
       if ("sets" in ex && ex.sets && ex.sets.length > 0) {
@@ -127,6 +175,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => 
       status: "active",
       muscles,
       splitDay: splitDay ?? null,
+      prescription: resolvedPrescription,
     };
 
     workoutSessionLocal.add(newSession);
@@ -137,6 +186,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => 
       elapsedTime: 0,
       isTimerRunning: false,
       isWorkoutActive: true,
+      sessionPrescription: resolvedPrescription,
       currentExercise: sessionExercises[0],
     });
   },
@@ -148,6 +198,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => 
     }
     set({
       session: null,
+      sessionPrescription: null,
       progress: {},
       elapsedTime: 0,
       isTimerRunning: false,
@@ -157,31 +208,45 @@ export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => 
     });
   },
 
- completeWorkout: () => {
-   const { session } = get();
+  completeWorkout: () => {
+    const { session, elapsedTime } = get();
 
-   if (session) {
-     // Mark all incomplete sets as completed so analytics picks them up.
-     // Without this, sessions finished via "Finish Session" (without clicking
-     // each individual "Finish Set") are invisible to ACWR / volume charts.
-     const completedExercises = session.exercises.map((ex) => ({
-       ...ex,
-       sets: ex.sets.map((set) => ({ ...set, completed: true })),
-     }));
-     const completedSession = { ...session, exercises: completedExercises };
+    if (session) {
+      // Mark all incomplete sets as completed so analytics picks them up.
+      // Without this, sessions finished via "Finish Session" (without clicking
+      // each individual "Finish Set") are invisible to ACWR / volume charts.
+      const completedExercises = session.exercises.map((ex) => ({
+        ...ex,
+        sets: ex.sets.map((set) => ({ ...set, completed: true })),
+      }));
+      const completedSession = {
+        ...session,
+        exercises: completedExercises,
+        duration: elapsedTime,
+      };
 
-     workoutSessionLocal.update(session.id, { status: "completed", endedAt: new Date().toISOString(), exercises: completedExercises });
-     set({
-       session: { ...completedSession, status: "completed", endedAt: new Date().toISOString() },
-       progress: {},
-       elapsedTime: 0,
-       isTimerRunning: false,
-       isWorkoutActive: false,
-     });
-   }
+      workoutSessionLocal.update(session.id, {
+        status: "completed",
+        endedAt: new Date().toISOString(),
+        duration: elapsedTime,
+        exercises: completedExercises,
+      });
+      set({
+        session: {
+          ...completedSession,
+          status: "completed",
+          endedAt: new Date().toISOString(),
+        },
+        progress: {},
+        elapsedTime: 0,
+        isTimerRunning: false,
+        isWorkoutActive: false,
+        sessionPrescription: null,
+      });
+    }
 
-   useWorkoutBuilderStore.getState().setStep(1);
- },
+    useWorkoutBuilderStore.getState().setStep(1);
+  },
 
   toggleTimer: () => {
     set((state) => {
@@ -190,6 +255,42 @@ export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => 
         workoutSessionLocal.update(state.session.id, { isActive: newIsRunning });
       }
       return { isTimerRunning: newIsRunning };
+    });
+  },
+
+  setElapsedTime: (seconds) => {
+    const safeSeconds = Math.max(seconds, 0);
+    set((state) => {
+      if (!state.session) {
+        return { elapsedTime: safeSeconds };
+      }
+
+      workoutSessionLocal.update(state.session.id, {
+        duration: safeSeconds,
+      });
+
+      return { elapsedTime: safeSeconds };
+    });
+  },
+  setTargetDurationSeconds: (seconds) => {
+    const safeSeconds = Math.max(Math.floor(seconds), 0);
+    set((state) => {
+      if (!state.sessionPrescription) return state;
+
+      const updatedPrescription: WorkoutSessionPrescription = {
+        ...state.sessionPrescription,
+        targetDurationSeconds: safeSeconds,
+      };
+
+      if (state.session) {
+        workoutSessionLocal.update(state.session.id, {
+          prescription: updatedPrescription,
+        });
+      }
+
+      return {
+        sessionPrescription: updatedPrescription,
+      };
     });
   },
 
@@ -297,10 +398,14 @@ export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => 
     get().updateSet(exerciseIndex, setIndex, { completed: true });
 
     // Start rest timer after finishing a set.
-    get().startRest(30);
+    const { sessionPrescription: activePrescription, session } = get();
+    const restSeconds =
+      activePrescription?.quickSetRestAfterSetSeconds ??
+      activePrescription?.restIntervalSeconds ??
+      30;
+    get().startRest(restSeconds);
 
     // if has completed all sets, go to next exercise
-    const { session } = get();
     if (!session) return;
 
     const exercise = session.exercises[exerciseIndex];
@@ -446,10 +551,11 @@ export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => 
       if (session && session.status === "active") {
         set({
           session,
+          sessionPrescription: session.prescription ?? null,
           isWorkoutActive: true,
           currentExerciseIndex: session.currentExerciseIndex ?? 0,
           currentExercise: session.exercises[session.currentExerciseIndex ?? 0],
-          elapsedTime: 0,
+          elapsedTime: session.duration ?? 0,
           isTimerRunning: false,
         });
       }

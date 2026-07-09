@@ -18,4 +18,17 @@ export interface WorkoutSession {
   serverId?: string; // If synced
   muscles: ExerciseAttributeValueEnum[];
   splitDay?: number | null; // 1-based training split day (null = free mode)
+  prescription?: WorkoutSessionPrescription;
+}
+
+export interface WorkoutSessionPrescription {
+  restIntervalSeconds: number;
+  warmupRoutineEnabled: boolean;
+  warmupExerciseCount: number;
+  warmupReps: number;
+  cooldownRoutineEnabled: boolean;
+  cooldownExerciseCount: number;
+  cooldownHoldSeconds: number;
+  quickSetRestAfterSetSeconds?: number;
+  targetDurationSeconds?: number;
 }

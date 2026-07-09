@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Play, Clock, Repeat } from "lucide-react";
+import { CircleCheckBig, CircleX, Clock, Play, Repeat } from "lucide-react";
 import { useI18n } from "locales/client";
 
 import type { ExerciseWithAttributes } from "@/entities/exercise/types/exercise.types";
@@ -17,6 +17,10 @@ interface StretchRoutineSectionProps {
   stretches: ExerciseWithAttributes[];
   completedIds: Set<string>;
   onToggleComplete: (exerciseId: string) => void;
+  onMarkAllComplete: () => void;
+  onClearAllComplete: () => void;
+  metricValue?: string;
+  metricLabel?: string;
 }
 
 const PHASE_CONFIG = {
@@ -27,7 +31,6 @@ const PHASE_CONFIG = {
     borderColor: "border-orange-200 dark:border-orange-800",
     accentColor: "bg-orange-100 dark:bg-orange-900",
     metricIcon: Repeat,
-    metricValue: `${WARMUP_REPS}`,
   },
   cooldown: {
     icon: Clock,
@@ -36,11 +39,19 @@ const PHASE_CONFIG = {
     borderColor: "border-blue-200 dark:border-blue-800",
     accentColor: "bg-blue-100 dark:bg-blue-900",
     metricIcon: Clock,
-    metricValue: `${STRETCH_HOLD_SECONDS}s`,
   },
 } as const;
 
-export function StretchRoutineSection({ phase, stretches, completedIds, onToggleComplete }: StretchRoutineSectionProps) {
+export function StretchRoutineSection({
+  phase,
+  stretches,
+  completedIds,
+  onToggleComplete,
+  onMarkAllComplete,
+  onClearAllComplete,
+  metricValue,
+  metricLabel,
+}: StretchRoutineSectionProps) {
   const t = useI18n();
 
   if (stretches.length === 0) return null;
@@ -50,13 +61,40 @@ export function StretchRoutineSection({ phase, stretches, completedIds, onToggle
   const MetricIcon = config.metricIcon;
   const title = phase === "warmup" ? t("workout_builder.session.warmup_title") : t("workout_builder.session.cooldown_title");
   const subtitle = phase === "warmup" ? t("workout_builder.session.warmup_subtitle") : t("workout_builder.session.cooldown_subtitle");
-  const metricLabel = phase === "warmup" ? t("workout_builder.session.stretch_reps") : t("workout_builder.session.stretch_hold");
+  const defaultMetricValue =
+    phase === "warmup"
+      ? `${WARMUP_REPS} ${t("workout_builder.session.reps")}`
+      : `${STRETCH_HOLD_SECONDS} ${t("workout_builder.session.time_unit_seconds")}`;
+  const computedMetricValue = metricValue ?? defaultMetricValue;
+  const computedMetricLabel =
+    metricLabel ?? (phase === "warmup" ? t("workout_builder.session.stretch_reps") : t("workout_builder.session.stretch_hold"));
 
   return (
-    <div className={cn("rounded-xl border p-4 mb-6", config.bgColor, config.borderColor)}>
+    <div
+      className={cn("rounded-xl border p-4 mb-6", config.bgColor, config.borderColor)}
+      id={phase === "warmup" ? "warmup-stretch-routine" : "cooldown-stretch-routine"}
+    >
       <div className="flex items-center gap-2 mb-1">
         <PhaseIcon className={cn("h-5 w-5", config.iconColor)} />
         <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">{title}</h3>
+      </div>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <button
+          className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100 px-2 py-1 text-[11px] text-emerald-700 dark:border-emerald-700/60 dark:bg-emerald-900/40 dark:text-emerald-200"
+          onClick={onMarkAllComplete}
+          type="button"
+        >
+          <CircleCheckBig className="h-3.5 w-3.5" />
+          {t("navigation.complete", {})}
+        </button>
+        <button
+          className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-[11px] text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-200"
+          onClick={onClearAllComplete}
+          type="button"
+        >
+          <CircleX className="h-3.5 w-3.5" />
+          {t("selection.clear_all", {})}
+        </button>
       </div>
       <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">{subtitle}</p>
       <div className="space-y-3">
@@ -71,8 +109,8 @@ export function StretchRoutineSection({ phase, stretches, completedIds, onToggle
               iconColor={config.iconColor}
               key={exercise.id}
               metricIcon={MetricIcon}
-              metricLabel={metricLabel}
-              metricValue={config.metricValue}
+              metricLabel={computedMetricLabel}
+              metricValue={computedMetricValue}
               name={name}
               onToggleComplete={() => onToggleComplete(exercise.id)}
               seeInstructionsLabel={t("workout_builder.session.see_instructions")}
@@ -161,7 +199,7 @@ function StretchCard({
           </div>
         </div>
         <button
-          aria-label="Toggle complete"
+            aria-label={t("workout_builder.session.toggle_complete", {})}
           className={cn(
             "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200 active:scale-90",
             completed ? "border-green-500 bg-green-500" : "border-slate-300 dark:border-slate-600 hover:border-slate-400",

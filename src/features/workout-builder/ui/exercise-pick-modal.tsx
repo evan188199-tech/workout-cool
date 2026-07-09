@@ -91,7 +91,7 @@ export function ExercisePickModal({ exercise, muscle, isOpen, onClose, onConfirm
         {exercise.fullVideoImageUrl && (
           <div className="relative h-48 bg-gradient-to-br from-slate-200 to-slate-200 dark:from-slate-700 dark:to-slate-800 rounded-lg overflow-hidden mb-4">
             <Image
-              alt={exerciseName || "Exercise"}
+              alt={exerciseName || t("workout_builder.exercise.image_alt")}
               className="object-cover"
               fill
               sizes="(max-width: 768px) 100vw, 50vw"
@@ -111,7 +111,9 @@ export function ExercisePickModal({ exercise, muscle, isOpen, onClose, onConfirm
         {/* Description */}
         {exerciseDescription && (
           <div className="mb-4">
-            <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100 mb-2">Description</h4>
+            <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100 mb-2">
+              {t("workout_builder.exercise.description_title")}
+            </h4>
             <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{exerciseDescription}</p>
           </div>
         )}
@@ -121,7 +123,9 @@ export function ExercisePickModal({ exercise, muscle, isOpen, onClose, onConfirm
           {/* Equipment */}
           {equipmentAttributes.length > 0 && (
             <div>
-              <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100 mb-2">Equipment</h4>
+              <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100 mb-2">
+                {t("workout_builder.exercise.equipment_title")}
+              </h4>
               <div className="flex flex-wrap gap-1">
                 {equipmentAttributes.map((equipment, index) => (
                   <Badge className="text-xs" key={index} variant="outline">
@@ -135,7 +139,7 @@ export function ExercisePickModal({ exercise, muscle, isOpen, onClose, onConfirm
           {/* Exercise Types */}
           {typeAttributes.length > 0 && (
             <div>
-              <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100 mb-2">Exercise Types</h4>
+              <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100 mb-2">{t("workout_builder.exercise.types_title")}</h4>
               <div className="flex flex-wrap gap-1">
                 {typeAttributes.map((type, index) => (
                   <Badge
@@ -155,10 +159,10 @@ export function ExercisePickModal({ exercise, muscle, isOpen, onClose, onConfirm
         <div className="modal-action">
           <form className="flex gap-2" method="dialog">
             <Button size="small" variant="outline">
-              Cancel
+              {t("workout_builder.exercise.cancel")}
             </Button>
             <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleConfirm} size="small">
-              ⭐ Confirm Pick
+              ⭐ {t("workout_builder.exercise.confirm_pick")}
             </Button>
           </form>
         </div>

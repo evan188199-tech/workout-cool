@@ -63,7 +63,7 @@ export function BodyWeightInput() {
           <option value="kg">kg</option>
           <option value="lbs">lbs</option>
         </select>
-        <Button disabled={saving || !weight} onClick={handleSave} size="sm" variant="default">
+        <Button disabled={saving || !weight} onClick={handleSave} size="small" variant="default">
           {saving ? "..." : t("commons.save")}
         </Button>
       </div>

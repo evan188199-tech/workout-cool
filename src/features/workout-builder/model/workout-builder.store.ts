@@ -14,6 +14,7 @@ import type { QuickSetScheme } from "@/features/training-science/model/quick-ses
 import { quickTrainingLocal } from "@/shared/lib/workout-session/quick-training.local";
 import { intentToTrainingGoal } from "@/features/training-science/model/user-intent";
 import { getQuickSessionAction } from "@/features/training-science/actions/get-quick-session.action";
+import { normalizeWorkoutPreferences } from "@/shared/lib/user-preferences";
 
 interface WorkoutBuilderState {
   currentStep: WorkoutBuilderStep;
@@ -31,9 +32,19 @@ interface WorkoutBuilderState {
   // Quick (office / snack) training mode
   quickMode: boolean;
   quickTimeBudget: QuickTimeBudget;
+  recommendedPlanMinutes: number;
+  restIntervalSeconds: number;
+  warmupRoutineEnabled: boolean;
+  warmupExerciseCount: number;
+  warmupReps: number;
+  cooldownRoutineEnabled: boolean;
+  cooldownExerciseCount: number;
+  cooldownHoldSeconds: number;
   isGeneratingQuick: boolean;
   quickError: string | null;
   quickSetScheme: QuickSetScheme | null;
+  isUsingBodyweightOnlyMode: boolean;
+  isLoadingWorkoutPreferences: boolean;
 
   // Quick plan session (advances the split, one-click full workout)
   isGeneratingPlanSession: boolean;
@@ -57,8 +68,16 @@ interface WorkoutBuilderState {
   setDaysPerWeek: (days: DaysPerWeek | null) => void;
   selectSplitDay: (dayNumber: number, muscles: ExerciseAttributeValueEnum[]) => void;
   setQuickTimeBudget: (budget: QuickTimeBudget) => void;
+  setRecommendedPlanMinutes: (minutes: number) => void;
+  setRestIntervalSeconds: (seconds: number) => void;
+  setWarmupRoutineEnabled: (enabled: boolean) => void;
+  setWarmupExerciseCount: (count: number) => void;
+  setWarmupReps: (reps: number) => void;
+  setCooldownRoutineEnabled: (enabled: boolean) => void;
+  setCooldownExerciseCount: (count: number) => void;
+  setCooldownHoldSeconds: (seconds: number) => void;
   generateQuickSession: () => Promise<void>;
-  generatePlanSession: (recommendedDay: number, muscles: ExerciseAttributeValueEnum[]) => Promise<void>;
+  generatePlanSession: (recommendedDay: number, muscles: ExerciseAttributeValueEnum[], recommendedDurationMinutes?: number) => Promise<void>;
   fetchExercises: () => Promise<void>;
   setExercisesOrder: (order: string[]) => void;
   setExercisesByMuscle: (exercisesByMuscle: any[]) => void;
@@ -74,6 +93,7 @@ interface WorkoutBuilderState {
     }[];
     exercisesOrder: string[];
   }) => void;
+  refreshWorkoutPreferences: () => Promise<void>;
 }
 
 export const useWorkoutBuilderStore = create<WorkoutBuilderState>((set, get) => ({
@@ -87,9 +107,19 @@ export const useWorkoutBuilderStore = create<WorkoutBuilderState>((set, get) => 
 
   quickMode: false,
   quickTimeBudget: 10,
+  recommendedPlanMinutes: 30,
+  restIntervalSeconds: 30,
+  warmupRoutineEnabled: true,
+  warmupExerciseCount: 3,
+  warmupReps: 10,
+  cooldownRoutineEnabled: true,
+  cooldownExerciseCount: 2,
+  cooldownHoldSeconds: 30,
   isGeneratingQuick: false,
   quickError: null,
   quickSetScheme: null,
+  isUsingBodyweightOnlyMode: false,
+  isLoadingWorkoutPreferences: false,
 
   isGeneratingPlanSession: false,
   planSessionError: null,
@@ -134,6 +164,50 @@ export const useWorkoutBuilderStore = create<WorkoutBuilderState>((set, get) => 
     quickTrainingLocal.setTimeBudget(budget);
     set({ quickTimeBudget: budget });
   },
+  setRecommendedPlanMinutes: (minutes) => set({ recommendedPlanMinutes: Math.max(20, Math.min(Math.round(minutes), 60)) }),
+  setRestIntervalSeconds: (seconds) => set({ restIntervalSeconds: Math.max(5, Math.min(Math.round(seconds), 180)) }),
+  setWarmupRoutineEnabled: (enabled) => set({ warmupRoutineEnabled: enabled }),
+  setWarmupExerciseCount: (count) => set({ warmupExerciseCount: Math.max(1, Math.min(Math.round(count), 4)) }),
+  setWarmupReps: (reps) => set({ warmupReps: Math.max(6, Math.min(Math.round(reps), 15)) }),
+  setCooldownRoutineEnabled: (enabled) => set({ cooldownRoutineEnabled: enabled }),
+  setCooldownExerciseCount: (count) => set({ cooldownExerciseCount: Math.max(1, Math.min(Math.round(count), 4)) }),
+  setCooldownHoldSeconds: (seconds) => set({ cooldownHoldSeconds: Math.max(20, Math.min(Math.round(seconds), 40)) }),
+
+  refreshWorkoutPreferences: async () => {
+    set({ isLoadingWorkoutPreferences: true });
+    try {
+      const res = await fetch("/api/user/preferences", { credentials: "include" });
+      if (!res.ok) {
+        throw new Error("failed_to_fetch_preferences");
+      }
+      const data = await res.json();
+      const preferences = normalizeWorkoutPreferences(data?.preferences ?? {});
+      const usesBodyweightOnly = preferences.equipmentMode === "bodyweight_only";
+
+      set((state) => ({
+        isUsingBodyweightOnlyMode: usesBodyweightOnly,
+        recommendedPlanMinutes: preferences.prescription.planSessionMinutes,
+        restIntervalSeconds: preferences.prescription.restIntervalSeconds,
+        warmupRoutineEnabled: preferences.prescription.warmupRoutineEnabled,
+        warmupExerciseCount: preferences.prescription.warmupExerciseCount,
+        warmupReps: preferences.prescription.warmupReps,
+        cooldownRoutineEnabled: preferences.prescription.cooldownRoutineEnabled,
+        cooldownExerciseCount: preferences.prescription.cooldownExerciseCount,
+        cooldownHoldSeconds: preferences.prescription.cooldownHoldSeconds,
+        quickTimeBudget: quickTrainingLocal.getTimeBudget(),
+        selectedEquipment:
+          state.selectedEquipment.length > 0
+            ? state.selectedEquipment
+            : usesBodyweightOnly
+              ? [ExerciseAttributeValueEnum.BODY_ONLY]
+              : state.selectedEquipment,
+      }));
+    } catch {
+      set({ isUsingBodyweightOnlyMode: false });
+    } finally {
+      set({ isLoadingWorkoutPreferences: false });
+    }
+  },
 
  generateQuickSession: async () => {
     set({ isGeneratingQuick: true, quickError: null });
@@ -143,7 +217,7 @@ export const useWorkoutBuilderStore = create<WorkoutBuilderState>((set, get) => 
       if (result?.serverError) throw new Error(result.serverError);
       const data = result?.data;
       if (!data || data.exercisesByMuscle.length === 0) {
-        throw new Error("No bodyweight exercises found for the recommended muscles.");
+        throw new Error("No exercises found for the recommended muscles.");
       }
       set({
         selectedEquipment: data.selectedEquipment,
@@ -160,18 +234,29 @@ export const useWorkoutBuilderStore = create<WorkoutBuilderState>((set, get) => 
     }
  },
 
-  generatePlanSession: async (recommendedDay, muscles) => {
+  generatePlanSession: async (recommendedDay, muscles, recommendedDurationMinutes) => {
     const { selectedEquipment } = get();
-    if (selectedEquipment.length === 0) {
-      set({ planSessionError: "Select at least one equipment first." });
-      return;
-    }
+      if (selectedEquipment.length === 0 && !get().isUsingBodyweightOnlyMode) {
+        set({ planSessionError: "Select at least one equipment first." });
+        return;
+      }
+    const requestedMinutes = recommendedDurationMinutes
+      ? Math.max(20, Math.min(recommendedDurationMinutes, 50))
+      : get().recommendedPlanMinutes;
+    const baseTarget = Math.max(1, Math.round(requestedMinutes / 5));
+    const perMuscleLimit = Math.max(1, Math.min(4, Math.ceil(baseTarget / Math.max(muscles.length, 1))));
     set({ isGeneratingPlanSession: true, planSessionError: null });
     try {
+      const equipmentFilter = selectedEquipment.length > 0
+        ? selectedEquipment
+        : get().isUsingBodyweightOnlyMode
+          ? [ExerciseAttributeValueEnum.BODY_ONLY]
+          : [];
+
       const result = await getExercisesAction({
-        equipment: selectedEquipment,
+        equipment: equipmentFilter,
         muscles,
-        limit: 3,
+        limit: perMuscleLimit,
         goal: get().selectedGoal(),
       });
       if (result?.serverError) throw new Error(result.serverError);

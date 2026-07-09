@@ -15,7 +15,7 @@ export const useForgotPassword = () => {
   const forgotPassword = async (email: string, setFieldError: (message: string) => void) => {
     setIsLoading(true);
     try {
-      const { error } = await authClient.forgetPassword({
+      const { error } = await authClient.resetPassword({
         email,
         redirectTo: `${getServerUrl()}/${paths.resetPassword}`,
       });

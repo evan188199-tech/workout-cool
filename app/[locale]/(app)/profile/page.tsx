@@ -7,6 +7,7 @@ import { WorkoutSessionHeatmap } from "@/features/workout-session/ui/workout-ses
 import { useWorkoutSessions } from "@/features/workout-session/model/use-workout-sessions";
 import { env } from "@/env";
 import { BodyWeightInput } from "@/features/profile/ui/body-weight-input";
+import { WorkoutEquipmentInput } from "@/features/profile/ui/workout-equipment-input";
 import { useCurrentSession } from "@/entities/user/model/useCurrentSession";
 import { LocalAlert } from "@/components/ui/local-alert";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,11 @@ export default function ProfilePage() {
       {session && (
         <div className="mt-4">
           <BodyWeightInput />
+        </div>
+      )}
+      {session && (
+        <div className="mt-4">
+          <WorkoutEquipmentInput />
         </div>
       )}
 

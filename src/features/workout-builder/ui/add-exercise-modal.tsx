@@ -105,6 +105,10 @@ export const AddExerciseModal = ({ isOpen, onClose, selectedEquipment }: AddExer
     return t(("workout_builder.muscles." + muscleKey) as keyof typeof t);
   };
 
+  const getLocalizedExerciseName = (exercise: ExerciseWithAttributes) => {
+    return locale === "en" ? exercise.nameEn || exercise.name : exercise.name;
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -115,7 +119,7 @@ export const AddExerciseModal = ({ isOpen, onClose, selectedEquipment }: AddExer
           <div className="flex items-center gap-4">
             <div className="relative">
               <Image
-                alt="Workout Cool mascotte"
+                alt={t("workout_builder.add_exercise_mascot_alt")}
                 className="rounded-full"
                 height={40}
                 src="/images/emojis/WorkoutCoolHappy.png"
@@ -173,7 +177,7 @@ export const AddExerciseModal = ({ isOpen, onClose, selectedEquipment }: AddExer
                     <div className="divide-y divide-gray-100 dark:divide-gray-800" id="favorites-section">
                       {favoriteExercises.map((exercise) => (
                         <div
-                          aria-label={`Ajouter ${locale === "en" ? exercise.nameEn || exercise.name : exercise.name}`}
+                          aria-label={t("workout_builder.exercise.add_with_name", { name: getLocalizedExerciseName(exercise) })}
                           className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 ease-in-out cursor-pointer group"
                           key={exercise.id}
                           onClick={() => {
@@ -197,7 +201,7 @@ export const AddExerciseModal = ({ isOpen, onClose, selectedEquipment }: AddExer
                                 {exercise.fullVideoImageUrl && (
                                   <div className="relative h-16 w-16 rounded-xl overflow-hidden shrink-0 bg-gray-100 dark:bg-gray-700 border-2 border-yellow-200 dark:border-yellow-600 group-hover:border-yellow-400 group-hover:shadow-lg transition-all duration-200">
                                     <Image
-                                      alt={exercise.nameEn || ""}
+                                    alt={getLocalizedExerciseName(exercise)}
                                       className="w-full h-full object-cover scale-[1.5]"
                                       height={64}
                                       loading="lazy"
@@ -222,13 +226,13 @@ export const AddExerciseModal = ({ isOpen, onClose, selectedEquipment }: AddExer
                               {/* Nom de l'exercice */}
                               <div className="flex-1">
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors leading-tight">
-                                  {locale === "fr" ? exercise.name : exercise.nameEn || exercise.name}
+                                  {getLocalizedExerciseName(exercise)}
                                 </h3>
                               </div>
 
                               {/* Bouton d'ajout moderne */}
                               <button
-                                aria-label={`Ajouter ${locale === "en" ? exercise.nameEn || exercise.name : exercise.name}`}
+                                aria-label={t("workout_builder.exercise.add_with_name", { name: getLocalizedExerciseName(exercise) })}
                                 className="btn btn-sm sm:btn-md bg-green-500 hover:bg-green-600 text-white border-0 transition-all duration-200 ease-in-out group-hover:scale-105 shadow-sm hover:shadow-md"
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -282,7 +286,7 @@ export const AddExerciseModal = ({ isOpen, onClose, selectedEquipment }: AddExer
                     <div className="divide-y divide-gray-100 dark:divide-gray-800" id={`muscle-${group.muscle}`}>
                       {group.exercises.map((exercise) => (
                         <div
-                          aria-label={`Ajouter ${locale === "en" ? exercise.nameEn || exercise.name : exercise.name}`}
+                          aria-label={t("workout_builder.exercise.add_with_name", { name: getLocalizedExerciseName(exercise) })}
                           className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 ease-in-out cursor-pointer group"
                           key={exercise.id}
                           onClick={() => handleAddExercise(exercise, group.muscle)}
@@ -302,7 +306,7 @@ export const AddExerciseModal = ({ isOpen, onClose, selectedEquipment }: AddExer
                                 {exercise.fullVideoImageUrl && (
                                   <div className="relative h-16 w-16 rounded-xl overflow-hidden shrink-0 bg-gray-100 dark:bg-gray-700 border-2 border-gray-400 dark:border-gray-600 group-hover:border-green-400 group-hover:shadow-lg transition-all duration-200">
                                     <Image
-                                      alt={exercise.nameEn}
+                                    alt={getLocalizedExerciseName(exercise)}
                                       className="w-full h-full object-cover scale-[1.5]"
                                       height={64}
                                       loading="lazy"
@@ -331,13 +335,13 @@ export const AddExerciseModal = ({ isOpen, onClose, selectedEquipment }: AddExer
                               {/* Nom de l'exercice */}
                               <div className="flex-1">
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors leading-tight">
-                                  {locale === "fr" ? exercise.name : exercise.nameEn || exercise.name}
+                                  {getLocalizedExerciseName(exercise)}
                                 </h3>
                               </div>
 
                               {/* Bouton d'ajout moderne */}
                               <button
-                                aria-label={`Ajouter ${locale === "en" ? exercise.nameEn || exercise.name : exercise.name}`}
+                                aria-label={t("workout_builder.exercise.add_with_name", { name: getLocalizedExerciseName(exercise) })}
                                 className="btn btn-sm sm:btn-md bg-green-500 hover:bg-green-600 text-white border-0 transition-all duration-200 ease-in-out group-hover:scale-105 shadow-sm hover:shadow-md"
                                 onClick={(e) => {
                                   e.stopPropagation();
