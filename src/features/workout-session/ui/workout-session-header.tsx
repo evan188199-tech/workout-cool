@@ -20,10 +20,58 @@ export function WorkoutSessionHeader({ onQuitWorkout }: WorkoutSessionHeaderProp
   const [showQuitDialog, setShowQuitDialog] = useState(false);
   const [volumeUnit, setVolumeUnit] = useState<WeightUnit>("kg");
   const locale = useCurrentLocale();
-  const { getExercisesCompleted, getTotalExercises, session, getTotalVolumeInUnit } = useWorkoutSession();
+  const { getExercisesCompleted, getTotalExercises, session, sessionPrescription, getTotalVolumeInUnit, elapsedTime } = useWorkoutSession();
   const exercisesCompleted = getExercisesCompleted();
   const totalExercises = getTotalExercises();
   const totalVolume = getTotalVolumeInUnit(volumeUnit);
+  const formatClock = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+  const elapsedSeconds = elapsedTime;
+  const targetDurationSeconds = sessionPrescription?.targetDurationSeconds;
+  const targetRemainingSeconds = targetDurationSeconds
+    ? Math.max(targetDurationSeconds - elapsedSeconds, 0)
+    : null;
+  const targetOvertimeSeconds = targetDurationSeconds ? Math.max(elapsedSeconds - targetDurationSeconds, 0) : 0;
+  const targetProgressPercent = targetDurationSeconds
+    ? Math.min(Math.round((elapsedSeconds / targetDurationSeconds) * 100), 100)
+    : 0;
+  const sessionPrescriptionSummary = sessionPrescription
+    ? [
+        {
+          label: t("workout_builder.session.elapsed_time"),
+          value: formatClock(elapsedSeconds),
+          disabled: false,
+        },
+        {
+          label: t("workout_builder.session.prescription_rest_label"),
+          value: t("workout_builder.session.prescription_rest_value", { seconds: sessionPrescription.restIntervalSeconds }),
+          disabled: false,
+        },
+        {
+          label: t("workout_builder.session.prescription_warmup_label"),
+          value: sessionPrescription.warmupRoutineEnabled
+            ? t("workout_builder.session.prescription_warmup_value", {
+                sets: sessionPrescription.warmupExerciseCount,
+                reps: sessionPrescription.warmupReps,
+              })
+            : t("workout_builder.session.prescription_feature_disabled"),
+          disabled: !sessionPrescription.warmupRoutineEnabled,
+        },
+        {
+          label: t("workout_builder.session.prescription_cooldown_label"),
+          value: sessionPrescription.cooldownRoutineEnabled
+            ? t("workout_builder.session.prescription_cooldown_value", {
+                sets: sessionPrescription.cooldownExerciseCount,
+                seconds: sessionPrescription.cooldownHoldSeconds,
+              })
+            : t("workout_builder.session.prescription_feature_disabled"),
+          disabled: !sessionPrescription.cooldownRoutineEnabled,
+        },
+      ]
+    : [];
 
   // Format time with animated colons
   const formatTimeWithAnimatedColons = (date: Date) => {
@@ -83,6 +131,27 @@ export function WorkoutSessionHeader({ onQuitWorkout }: WorkoutSessionHeaderProp
               {t("workout_builder.session.quit_workout")}
             </Button>
           </div>
+          {!!targetDurationSeconds ? (
+            <div className="mb-2 rounded-md border border-emerald-200 bg-emerald-50 dark:border-emerald-900/60 dark:bg-emerald-950/30 p-2">
+              <div className="text-xs text-emerald-700 dark:text-emerald-300 mb-1">
+                {t("workout_builder.session.target_duration_label")}
+              </div>
+              <div className="mb-1 text-lg font-bold text-emerald-900 dark:text-emerald-100">
+                {formatClock(elapsedSeconds)} / {formatClock(targetDurationSeconds)}
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-emerald-200/80 dark:bg-emerald-900/70 overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 transition-all duration-300"
+                  style={{ width: `${targetProgressPercent}%` }}
+                />
+              </div>
+              <div className="mt-1 text-xs text-emerald-700 dark:text-emerald-200">
+                {targetOvertimeSeconds > 0
+                  ? t("workout_builder.session.target_time_exceeded", { time: formatClock(targetOvertimeSeconds) })
+                  : t("workout_builder.session.remaining_time", { time: formatClock(targetRemainingSeconds || 0) })}
+              </div>
+            </div>
+          ) : null}
 
           <div className="grid grid-cols-2 gap-2">
             {/* Card 1: Exercise Progress */}
@@ -158,6 +227,28 @@ export function WorkoutSessionHeader({ onQuitWorkout }: WorkoutSessionHeaderProp
               </div>
             </div>
           </div>
+
+          {!!sessionPrescription && (
+            <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 dark:border-indigo-900/60 dark:bg-indigo-950/30">
+              <p className="mb-2 text-sm font-semibold text-indigo-900 dark:text-indigo-200">
+                {t("workout_builder.session.prescription_card_title")}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {sessionPrescriptionSummary.map((item) => (
+                  <span
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+                      item.disabled
+                        ? "border border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200"
+                        : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200"
+                    }`}
+                    key={item.label}
+                  >
+                    {item.label}: {item.value}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

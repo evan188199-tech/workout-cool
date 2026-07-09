@@ -115,7 +115,7 @@ export function WorkoutSessionSet({ set, setIndex, onChange, onFinish, onRemove 
               min={0}
               onChange={handleValueIntChange(columnIndex)}
               pattern="[0-9]*"
-              placeholder="min"
+              placeholder={t("workout_builder.session.time_unit_min")}
               type="number"
               value={valuesInt[columnIndex] ?? ""}
             />
@@ -126,7 +126,7 @@ export function WorkoutSessionSet({ set, setIndex, onChange, onFinish, onRemove 
               min={0}
               onChange={handleValueSecChange(columnIndex)}
               pattern="[0-9]*"
-              placeholder="sec"
+              placeholder={t("workout_builder.session.time_unit_seconds")}
               type="number"
               value={valuesSec[columnIndex] ?? ""}
             />
@@ -191,10 +191,10 @@ export function WorkoutSessionSet({ set, setIndex, onChange, onFinish, onRemove 
               : "bg-blue-500 dark:bg-blue-900 dark:text-blue-300"
           }`}
         >
-          {set.completed ? "✓" : ""} SET {setIndex + 1}
+          {set.completed ? "✓" : ""} {t("workout_builder.session.set_number", { number: setIndex + 1 })}
         </div>
         <Button
-          aria-label="Supprimer la série"
+          aria-label={t("workout_builder.session.delete_set")}
           className="bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/60 text-red-600 dark:text-red-300 rounded-full p-1 h-8 w-8 flex items-center justify-center shadow transition"
           disabled={set.completed}
           onClick={onRemove}

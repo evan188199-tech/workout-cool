@@ -8,6 +8,11 @@ import type { ExerciseWithAttributes } from "@/entities/exercise/types/exercise.
 import { prisma } from "@/shared/lib/prisma";
 import { authenticatedActionClient } from "@/shared/api/safe-actions";
 import {
+  normalizeWorkoutPreferences,
+  resolveAllowedEquipment,
+  shouldUseOfficeFilters,
+} from "@/shared/lib/user-preferences";
+import {
   OFFICE_WHITELIST_SLUGS,
   recommendQuickSession,
 } from "@/features/training-science/model/quick-session";
@@ -15,7 +20,7 @@ import { selectExercises } from "@/features/training-science/model/exercise-sele
 import { getRecommendedDay } from "@/features/training-science/actions/training-plan.action";
 
 const getQuickSessionSchema = z.object({
-  timeBudgetMin: z.union([z.literal(5), z.literal(10), z.literal(15)]),
+  timeBudgetMin: z.union([z.literal(5), z.literal(10), z.literal(15), z.literal(20), z.literal(25)]),
 });
 
 export const getQuickSessionAction = authenticatedActionClient
@@ -23,6 +28,14 @@ export const getQuickSessionAction = authenticatedActionClient
   .action(async ({ parsedInput, ctx }) => {
     const { timeBudgetMin } = parsedInput;
     const userId = ctx.user.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { onboardingPreferences: true },
+    });
+    const preferences = normalizeWorkoutPreferences(user?.onboardingPreferences ?? null);
+    const allowedEquipment = resolveAllowedEquipment([], preferences);
+    const officeFilterEnabled = shouldUseOfficeFilters(preferences);
 
     // 1. Load today's planned muscles from the active training plan (empty if none).
     const recommendation = await getRecommendedDay();
@@ -49,13 +62,15 @@ export const getQuickSessionAction = authenticatedActionClient
       timeBudgetMin,
       plannedMusclesToday,
       recentQuickMusclesToday: recentQuickMusclesToday as ExerciseAttributeValueEnum[],
+      preferredRestSeconds: preferences.prescription.restIntervalSeconds,
     });
 
-    // 4. Fetch office-friendly exercises for the allocated muscles.
-    //    Query by slugEn IN the curated whitelist at the DB level — the BODY_ONLY
-    //    equipment tag is too noisy (includes pull-ups, dips, levers, handstands,
-    //    and other moves that need a bar / floor / wall). Doing it in the query
-    //    (not a post-filter) guarantees no banned exercise can ever leak through.
+    // 4. Fetch filtered exercises for the allocated muscles.
+    //    OFFICE mode keeps the existing curated slug whitelist. All modes use
+    //    shared equipment constraints before set selection.
+    const equipmentAttributeName = await prisma.exerciseAttributeName.findUnique({
+      where: { name: ExerciseAttributeNameEnum.EQUIPMENT },
+    });
     const primaryMuscleAttributeName = await prisma.exerciseAttributeName.findUnique({
       where: { name: ExerciseAttributeNameEnum.PRIMARY_MUSCLE },
     });
@@ -63,9 +78,23 @@ export const getQuickSessionAction = authenticatedActionClient
       where: { name: ExerciseAttributeNameEnum.SECONDARY_MUSCLE },
     });
 
-    if (!primaryMuscleAttributeName || !secondaryMuscleAttributeName) {
+    if (!primaryMuscleAttributeName || !secondaryMuscleAttributeName || !equipmentAttributeName) {
       throw new Error("Missing exercise attributes in database");
     }
+
+    const equipmentFilter = allowedEquipment.length > 0
+      ? {
+          attributes: {
+            some: {
+              attributeNameId: equipmentAttributeName.id,
+              attributeValue: { value: { in: allowedEquipment } },
+            },
+          },
+        }
+      : {};
+    const environmentFilter = officeFilterEnabled
+      ? [{ slugEn: { in: OFFICE_WHITELIST_SLUGS } }]
+      : [];
 
     const exercisesByMuscle: { muscle: ExerciseAttributeValueEnum; exercises: ExerciseWithAttributes[] }[] = [];
     const selectedMuscles: ExerciseAttributeValueEnum[] = [];
@@ -77,6 +106,7 @@ export const getQuickSessionAction = authenticatedActionClient
       const primaryExercises = await prisma.exercise.findMany({
         where: {
           AND: [
+            ...environmentFilter,
             {
               attributes: {
                 some: {
@@ -85,7 +115,7 @@ export const getQuickSessionAction = authenticatedActionClient
                 },
               },
             },
-            { slugEn: { in: OFFICE_WHITELIST_SLUGS } },
+            ...(allowedEquipment.length > 0 ? [equipmentFilter] : []),
           ],
         },
         include: { attributes: { include: { attributeName: true, attributeValue: true } } },
@@ -97,16 +127,17 @@ export const getQuickSessionAction = authenticatedActionClient
         const existingIds = new Set(pool.map((ex) => ex.id));
         const secondaryExercises = await prisma.exercise.findMany({
           where: {
-            AND: [
-              {
-                attributes: {
-                  some: {
+          AND: [
+            ...environmentFilter,
+            {
+              attributes: {
+                some: {
                     attributeNameId: secondaryMuscleAttributeName.id,
                     attributeValue: { value: muscle },
                   },
                 },
               },
-              { slugEn: { in: OFFICE_WHITELIST_SLUGS } },
+              ...(allowedEquipment.length > 0 ? [equipmentFilter] : []),
               { id: { notIn: Array.from(existingIds) } },
             ],
           },
@@ -128,7 +159,9 @@ export const getQuickSessionAction = authenticatedActionClient
     return {
       exercisesByMuscle,
       selectedMuscles,
-      selectedEquipment: [ExerciseAttributeValueEnum.BODY_ONLY],
+      selectedEquipment: allowedEquipment.length > 0
+        ? allowedEquipment
+        : [ExerciseAttributeValueEnum.BODY_ONLY],
       selectedSplitDay: null as number | null,
       reason: quickPlan.reason,
       setScheme: quickPlan.setScheme,

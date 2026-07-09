@@ -37,18 +37,25 @@ export function OverallStatsSummary() {
     );
   }
 
+  const totalWorkouts = data?.totalWorkouts ?? 0;
+  const totalVolume = data?.totalVolume ?? 0;
+  const totalSets = data?.totalSets ?? 0;
+  const totalWorkoutTime = data?.totalWorkoutTime ?? 0;
+  const topExercises = data?.topExercises ?? [];
+  const volumeTrend = data?.volumeTrend ?? [];
+
   const stats = [
     {
       icon: Activity,
       label: t("statistics.total_workouts"),
-      value: data?.totalWorkouts ?? 0,
+      value: totalWorkouts,
       color: "text-emerald-500",
       bg: "bg-emerald-500/10",
     },
     {
       icon: Dumbbell,
       label: t("statistics.total_volume"),
-      value: data ? `${(data.totalVolume / 1000).toFixed(1)}K` : "0",
+      value: `${(totalVolume / 1000).toFixed(1)}K`,
       sub: "kg",
       color: "text-orange-500",
       bg: "bg-orange-500/10",
@@ -56,14 +63,14 @@ export function OverallStatsSummary() {
     {
       icon: Layers,
       label: t("statistics.total_sets"),
-      value: data?.totalSets ?? 0,
+      value: totalSets,
       color: "text-blue-500",
       bg: "bg-blue-500/10",
     },
     {
       icon: Clock,
       label: t("statistics.total_time"),
-      value: data ? formatDuration(data.totalWorkoutTime) : "0",
+      value: formatDuration(totalWorkoutTime),
       color: "text-purple-500",
       bg: "bg-purple-500/10",
     },
@@ -92,11 +99,11 @@ export function OverallStatsSummary() {
         })}
       </div>
 
-      {data?.topExercises && data.topExercises.length > 0 && (
+      {topExercises.length > 0 && (
         <div className="bg-base-100 rounded-lg p-4 border border-base-200 mb-8">
           <h3 className="text-lg font-semibold mb-3">{t("statistics.top_exercises")}</h3>
           <div className="space-y-2">
-            {data.topExercises.map((ex, i) => (
+            {topExercises.map((ex, i) => (
               <div className="flex items-center gap-3" key={ex.id}>
                 <span className="text-sm font-bold text-base-content/40 w-5">{i + 1}</span>
                 <span className="flex-1 text-sm font-medium truncate">{ex.name}</span>
@@ -111,10 +118,10 @@ export function OverallStatsSummary() {
       )}
 
       {/* Global volume trend across ALL exercises */}
-      {data?.volumeTrend && data.volumeTrend.length > 0 && (
+      {volumeTrend.length > 0 && (
         <div className="mb-8">
           <VolumeChart
-            data={data.volumeTrend.map((v) => ({
+            data={volumeTrend.map((v) => ({
               week: v.weekStart,
               totalVolume: v.totalVolume,
               setCount: v.setCount,

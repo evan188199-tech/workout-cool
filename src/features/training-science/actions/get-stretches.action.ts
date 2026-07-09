@@ -12,6 +12,9 @@ import { recommendStretchSlugs, type StretchPhase } from "@/features/training-sc
 const getStretchesSchema = z.object({
   muscles: z.array(z.nativeEnum(ExerciseAttributeValueEnum)).min(1),
   phase: z.enum(["warmup", "cooldown"]),
+  count: z.number().int().min(1).max(4).optional(),
+  warmupReps: z.number().int().min(6).max(15).optional(),
+  cooldownHoldSeconds: z.number().int().min(20).max(40).optional(),
 });
 
 /**
@@ -24,7 +27,11 @@ const getStretchesSchema = z.object({
 export const getStretchesAction = actionClient.schema(getStretchesSchema).action(async ({ parsedInput }) => {
   const { muscles, phase } = parsedInput;
 
-  const slugs = recommendStretchSlugs(muscles, phase as StretchPhase);
+    const slugs = recommendStretchSlugs(muscles, phase as StretchPhase, {
+      count: parsedInput.count,
+      warmupReps: parsedInput.warmupReps,
+      cooldownHoldSeconds: parsedInput.cooldownHoldSeconds,
+    });
   if (slugs.length === 0) return [];
 
   try {

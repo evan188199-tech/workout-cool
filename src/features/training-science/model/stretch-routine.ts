@@ -174,6 +174,16 @@ const COOLDOWN_SLUGS: Record<string, string[]> = {
 
 /** How many stretches to show per phase. */
 const STRETCH_COUNT = 3;
+/** Default dynamic warm-up reps. */
+export const WARMUP_REPS = 10;
+/** Default static stretch hold seconds. */
+export const STRETCH_HOLD_SECONDS = 30;
+
+export interface StretchRecommendationInput {
+  count?: number;
+  warmupReps?: number;
+  cooldownHoldSeconds?: number;
+}
 
 /**
  * Recommend stretch slugs for a given phase and target muscles.
@@ -185,7 +195,10 @@ const STRETCH_COUNT = 3;
 export function recommendStretchSlugs(
   muscles: TrainableMuscle[],
   phase: StretchPhase,
+  options?: StretchRecommendationInput,
 ): string[] {
+  const count = options?.count ?? STRETCH_COUNT;
+  const target = Math.max(1, Math.min(4, count));
   const pool = phase === "warmup" ? WARMUP_SLUGS : COOLDOWN_SLUGS;
   const seen = new Set<string>();
   const result: string[] = [];
@@ -198,25 +211,19 @@ export function recommendStretchSlugs(
         seen.add(slug);
         result.push(slug);
       }
-      if (result.length >= STRETCH_COUNT) return result;
+      if (result.length >= target) return result;
     }
   }
 
-  if (result.length < STRETCH_COUNT) {
+  if (result.length < target) {
     for (const slug of pool._general) {
       if (!seen.has(slug)) {
         seen.add(slug);
         result.push(slug);
       }
-      if (result.length >= STRETCH_COUNT) break;
+      if (result.length >= target) break;
     }
   }
 
   return result;
 }
-
-/** Hold duration (seconds) for each static stretch in the cool-down. */
-export const STRETCH_HOLD_SECONDS = 30;
-
-/** How many dynamic reps / repetitions for warm-up movements. */
-export const WARMUP_REPS = 10;

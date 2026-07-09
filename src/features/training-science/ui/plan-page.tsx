@@ -24,12 +24,35 @@ interface PlanPageProps {
   plan: TrainingPlanData | null;
 }
 
-const INTENT_LABELS: Record<UserIntent, string> = {
-  build_strength: "Build Strength",
-  build_muscle: "Build Muscle",
-  lose_fat: "Lose Fat",
-  improve_endurance: "Endurance",
-  general_fitness: "Stay Fit",
+const INTENT_LABEL_KEYS: Record<UserIntent, string> = {
+  build_strength: "workout_builder.goal_strength",
+  build_muscle: "workout_builder.goal_hypertrophy",
+  lose_fat: "workout_builder.goal_endurance",
+  improve_endurance: "workout_builder.goal_endurance",
+  general_fitness: "workout_builder.goal_general",
+};
+
+const SPLIT_LABEL_KEYS: Record<string, string> = {
+  "training_science.split.fullbody_a": "workout_builder.split_fullbody_1",
+  "training_science.split.fullbody_b": "workout_builder.split_fullbody_2",
+  "training_science.split.push": "workout_builder.split_ppl_1",
+  "training_science.split.pull": "workout_builder.split_ppl_2",
+  "training_science.split.legs": "workout_builder.split_ppl_3",
+  "training_science.split.upper_a": "workout_builder.split_upperlower_1",
+  "training_science.split.lower_a": "workout_builder.split_upperlower_2",
+  "training_science.split.upper_b": "workout_builder.split_upperlower_3",
+  "training_science.split.lower_b": "workout_builder.split_upperlower_4",
+  "training_science.split.upper": "workout_builder.split_ppl-ul_4",
+  "training_science.split.lower_core": "workout_builder.split_ppl-ul_5",
+};
+
+const getSplitLabel = (t: ReturnType<typeof useI18n>, labelKey: string) => {
+  const translatedKey = SPLIT_LABEL_KEYS[labelKey];
+  return t((translatedKey ?? (labelKey as keyof typeof t)) as keyof typeof t);
+};
+
+const getIntentLabel = (t: ReturnType<typeof useI18n>, intent: UserIntent) => {
+  return t(INTENT_LABEL_KEYS[intent] as keyof typeof t);
 };
 
 export function PlanPage({ plan }: PlanPageProps) {
@@ -56,6 +79,7 @@ export function PlanPage({ plan }: PlanPageProps) {
 
 function CreatePlanView() {
   const router = useRouter();
+  const t = useI18n();
   const [intent, setIntent] = useState<UserIntent>("general_fitness");
   const [days, setDays] = useState<2 | 3 | 4 | 5 | null>(null);
   const [saving, setSaving] = useState(false);
@@ -69,12 +93,12 @@ function CreatePlanView() {
     try {
       const result = await saveTrainingPlan(intent, days);
       if (!result.success) {
-        setError("Please sign in to save your plan.");
+        setError(t("workout_builder.plan_page.save_error_auth"));
         return;
       }
       router.refresh();
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(t("workout_builder.plan_page.save_error_generic"));
     } finally {
       setSaving(false);
     }
@@ -83,14 +107,17 @@ function CreatePlanView() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-4">
       <div className="text-center">
-        <h1 className="text-2xl font-bold">Create your training plan</h1>
-        <p className="text-sm text-slate-500 mt-1">Set your goal and schedule. We&apos;ll generate a science-based split.</p>
+        <h1 className="text-2xl font-bold">{t("workout_builder.plan_page.create_title")}</h1>
+        <p className="text-sm text-slate-500 mt-1">{t("workout_builder.plan_page.create_subtitle")}</p>
       </div>
 
       {!user && (
         <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
           <AlertDescription className="text-sm text-amber-700 dark:text-amber-300">
-            <a href="/auth/signin" className="font-semibold underline">Sign in</a> to save your training plan and track progress.
+            <a href="/auth/signin" className="font-semibold underline">
+              {t("commons.login")}
+            </a>{" "}
+            {t("workout_builder.plan_page.sign_in_prompt_suffix")}
           </AlertDescription>
         </Alert>
       )}
@@ -113,7 +140,7 @@ function CreatePlanView() {
       {days && (
         <Button onClick={handleSave} disabled={saving} className="w-full bg-emerald-500 hover:bg-emerald-600" size="large">
           <CheckCircle2 className="mr-2 h-5 w-5" />
-          {saving ? "Saving..." : "Save plan"}
+          {saving ? t("commons.saving") : t("workout_builder.plan_page.save_plan")}
         </Button>
       )}
     </div>
@@ -149,13 +176,13 @@ function ActivePlanView({
     try {
       const result = await saveTrainingPlan(editIntent, editDays, { preserveProgress: true });
       if (!result.success) {
-        setError("Please sign in to save changes.");
+        setError(t("workout_builder.plan_page.save_error_auth"));
         return;
       }
       setEditing(false);
       router.refresh();
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(t("workout_builder.plan_page.save_error_generic"));
     } finally {
       setSaving(false);
     }
@@ -164,8 +191,10 @@ function ActivePlanView({
   if (editing) {
     return (
       <div className="mx-auto max-w-3xl space-y-6 p-4">
-        <h1 className="text-2xl font-bold">Edit your plan</h1>
-        <p className="text-sm text-slate-500">Your progress ({plan.completedSessions} sessions) will be preserved.</p>
+        <h1 className="text-2xl font-bold">{t("workout_builder.plan_page.edit_title")}</h1>
+        <p className="text-sm text-slate-500">
+          {t("workout_builder.plan_page.preserve_progress", { sessions: plan.completedSessions })}
+        </p>
 
         {error && (
           <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30">
@@ -184,7 +213,7 @@ function ActivePlanView({
 
         <div className="flex gap-3">
           <Button variant="outline" className="flex-1" onClick={() => setEditing(false)}>
-            Cancel
+            {t("commons.cancel")}
           </Button>
           <Button
             onClick={handleSaveEdit}
@@ -192,7 +221,7 @@ function ActivePlanView({
             className="flex-1 bg-emerald-500 hover:bg-emerald-600"
           >
             <CheckCircle2 className="mr-2 h-5 w-5" />
-            {saving ? "Saving..." : "Save changes"}
+            {saving ? t("commons.saving") : t("workout_builder.plan_page.save_changes")}
           </Button>
         </div>
       </div>
@@ -207,26 +236,26 @@ function ActivePlanView({
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold">My Training Plan</h1>
+          <h1 className="text-2xl font-bold">{t("workout_builder.plan_page.my_plan_title")}</h1>
           <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
             <span className="flex items-center gap-1">
               <Target className="h-4 w-4" />
-              {INTENT_LABELS[plan.intent]}
+              {getIntentLabel(t, plan.intent)}
             </span>
             <span className="flex items-center gap-1">
               <Calendar className="h-4 w-4" />
-              {plan.daysPerWeek} days / week
+              {t("workout_builder.plan_page.days_per_week", { days: plan.daysPerWeek })}
             </span>
           </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="small" onClick={() => setEditing(true)}>
             <Pencil className="h-4 w-4 mr-1" />
-            Edit
+            {t("commons.edit")}
           </Button>
           <Button variant="outline" size="small" onClick={onDelete}>
             <Trash2 className="h-4 w-4 mr-1" />
-            Delete
+            {t("commons.delete")}
           </Button>
         </div>
       </div>
@@ -235,8 +264,10 @@ function ActivePlanView({
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold">Progress</span>
-            <span className="text-sm text-slate-500">{plan.completedSessions} sessions completed</span>
+            <span className="text-sm font-semibold">{t("workout_builder.plan_page.progress_title")}</span>
+            <span className="text-sm text-slate-500">
+              {t("workout_builder.plan_page.progress_sessions", { count: plan.completedSessions })}
+            </span>
           </div>
           <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
             <div
@@ -245,14 +276,17 @@ function ActivePlanView({
             />
           </div>
           <p className="text-xs text-slate-400 mt-2">
-            Next recommended: Day {plan.currentDay} · Cycle {Math.floor(plan.completedSessions / split.days.length) + 1}
+            {t("workout_builder.plan_page.next_recommended", {
+              day: plan.currentDay,
+              cycle: Math.floor(plan.completedSessions / split.days.length) + 1,
+            })}
           </p>
         </CardContent>
       </Card>
 
       {/* Split days */}
       <div className="space-y-3">
-        <h2 className="text-lg font-semibold">Weekly Split</h2>
+        <h2 className="text-lg font-semibold">{t("workout_builder.plan_page.weekly_split_title")}</h2>
         {split.days.map((day, idx) => {
           const dist = distributions[idx];
           const isNext = day.dayNumber === plan.currentDay;
@@ -265,11 +299,11 @@ function ActivePlanView({
                       {day.dayNumber}
                     </span>
                     <span className="font-semibold capitalize">
-                      {day.labelKey.split(".").pop()?.replace(/_/g, " ")}
+                      {getSplitLabel(t, day.labelKey)}
                     </span>
                     {isNext && (
                       <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                        Next up
+                        {t("workout_builder.plan_page.next_up")}
                       </span>
                     )}
                   </div>
@@ -280,7 +314,7 @@ function ActivePlanView({
                     onClick={() => onStartDay(day.dayNumber, day.muscles)}
                   >
                     <Play className="h-4 w-4 mr-1" />
-                    Train
+                    {t("workout_builder.plan_page.train_button")}
                   </Button>
                 </div>
                 <div className="flex flex-wrap gap-1.5">

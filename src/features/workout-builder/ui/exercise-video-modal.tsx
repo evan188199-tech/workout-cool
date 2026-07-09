@@ -92,7 +92,7 @@ export function ExerciseVideoModal({ open, onOpenChange, exercise, defaultTab = 
             </TabsTrigger>
             <TabsTrigger className="flex items-center gap-2" value="statistics">
               <BarChart3 size={16} />
-              {t("statistics.title") || "Statistics"}
+              {t("statistics.title")}
             </TabsTrigger>
           </TabsList>
 
