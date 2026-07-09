@@ -1,6 +1,7 @@
 "use client";
+import { useState } from "react";
 import Image from "next/image";
-import { Check } from "lucide-react";
+import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import { useI18n, useCurrentLocale } from "locales/client";
 import { ExerciseAttributeValueEnum } from "@prisma/client";
 
@@ -12,6 +13,9 @@ import { useWorkoutFeedback } from "@/shared/hooks/use-workout-feedback";
 import { env } from "@/env";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+
+// Default number of equipment cards shown before the user expands the list.
+const VISIBLE_COUNT = 4;
 
 interface EquipmentSelectionProps {
   onClearEquipment: VoidFunction;
@@ -124,11 +128,20 @@ function EquipmentCard({ equipment, isSelected, onToggle }: EquipmentCardProps) 
 
 export function EquipmentSelection({ onToggleEquipment, selectedEquipment }: EquipmentSelectionProps) {
   const locale = useCurrentLocale();
+  const t = useI18n();
+  const [showAll, setShowAll] = useState(false);
+
+  const visibleEquipment = showAll
+    ? EQUIPMENT_CONFIG
+    : EQUIPMENT_CONFIG.filter(
+        (equipment, index) => index < VISIBLE_COUNT || selectedEquipment.includes(equipment.value),
+      );
+  const hasHiddenEquipment = EQUIPMENT_CONFIG.length > VISIBLE_COUNT;
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {EQUIPMENT_CONFIG.map((equipment, index) => (
+        {visibleEquipment.map((equipment, index) => (
           <div
             className="animate-fade-in-up"
             key={equipment.value}
@@ -145,6 +158,19 @@ export function EquipmentSelection({ onToggleEquipment, selectedEquipment }: Equ
           </div>
         ))}
       </div>
+
+      {hasHiddenEquipment && (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => setShowAll((v) => !v)}
+            className="group flex items-center gap-2 rounded-full border-2 border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 hover:border-emerald-400 hover:text-emerald-600 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-emerald-500 dark:hover:text-emerald-400"
+          >
+            {showAll ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {showAll ? t("workout_builder.show_less") : t("workout_builder.show_more")}
+          </button>
+        </div>
+      )}
 
       {/* {locale === "fr" ? (
         <NutripureAffiliateBanner />

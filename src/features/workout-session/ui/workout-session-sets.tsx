@@ -7,9 +7,13 @@ import { Check, Play, ArrowRight, Trophy as TrophyIcon, Plus, Hourglass } from "
 import { useCurrentLocale, useI18n } from "locales/client";
 import confetti from "canvas-confetti";
 import TrophyImg from "@public/images/trophy.png";
+import { ExerciseAttributeValueEnum } from "@prisma/client";
 
 import { FavoriteExerciseButton } from "../../workout-builder/ui/favorite-exercise-button";
 import { WorkoutSessionSet } from "./workout-session-set";
+import { StretchRoutineSection } from "./stretch-routine-section";
+
+import type { ExerciseWithAttributes } from "@/entities/exercise/types/exercise.types";
 
 import { cn } from "@/shared/lib/utils";
 import { useWorkoutFeedback } from "@/shared/hooks/use-workout-feedback";
@@ -17,6 +21,7 @@ import { useWorkoutSession } from "@/features/workout-session/model/use-workout-
 import { useSyncWorkoutSessions } from "@/features/workout-session/model/use-sync-workout-sessions";
 import { ExerciseVideoModal } from "@/features/workout-builder/ui/exercise-video-modal";
 import { useSyncFavoriteExercises } from "@/features/workout-builder/hooks/use-sync-favorite-exercises";
+import { getStretchesAction } from "@/features/training-science/actions/get-stretches.action";
 import { env } from "@/env";
 import { PremiumUpsellAlert } from "@/components/ui/premium-upsell-alert";
 import { Button } from "@/components/ui/button";
@@ -38,10 +43,38 @@ export function WorkoutSessionSets({
     useWorkoutSession();
   const exerciseDetailsMap = Object.fromEntries(session?.exercises.map((ex) => [ex.id, ex]) || []);
   const [videoModal, setVideoModal] = useState<{ open: boolean; exerciseId?: string }>({ open: false });
-  const { syncSessions } = useSyncWorkoutSessions();
-  const prevExerciseIndexRef = useRef<number>(currentExerciseIndex);
-  const { syncFavoriteExercises } = useSyncFavoriteExercises();
-  const feedback = useWorkoutFeedback();
+ const { syncSessions } = useSyncWorkoutSessions();
+ const prevExerciseIndexRef = useRef<number>(currentExerciseIndex);
+ const { syncFavoriteExercises } = useSyncFavoriteExercises();
+ const feedback = useWorkoutFeedback();
+
+  // --- Stretch routines (warm-up before, cool-down after) ---
+  const [warmupStretches, setWarmupStretches] = useState<ExerciseWithAttributes[]>([]);
+  const [cooldownStretches, setCooldownStretches] = useState<ExerciseWithAttributes[]>([]);
+  const [completedWarmup, setCompletedWarmup] = useState<Set<string>>(new Set());
+  const [completedCooldown, setCompletedCooldown] = useState<Set<string>>(new Set());
+
+  const sessionMuscles = (session?.muscles as ExerciseAttributeValueEnum[]) ?? [];
+
+  useEffect(() => {
+    if (sessionMuscles.length === 0) return;
+    getStretchesAction({ muscles: sessionMuscles, phase: "warmup" }).then((res) => {
+      if (res?.data) setWarmupStretches(res.data);
+    });
+    getStretchesAction({ muscles: sessionMuscles, phase: "cooldown" }).then((res) => {
+      if (res?.data) setCooldownStretches(res.data);
+    });
+  }, [sessionMuscles.join(",")]);
+
+  const toggleStretchComplete = (exerciseId: string, phase: "warmup" | "cooldown") => {
+    const setter = phase === "warmup" ? setCompletedWarmup : setCompletedCooldown;
+    setter((prev) => {
+      const next = new Set(prev);
+      if (next.has(exerciseId)) next.delete(exerciseId);
+      else next.add(exerciseId);
+      return next;
+    });
+  };
 
   // auto-scroll to current exercise when index changes (but not when adding sets)
   useEffect(() => {
@@ -72,16 +105,26 @@ export function WorkoutSessionSets({
     }
   }, [currentExerciseIndex, session]);
 
-  if (showCongrats) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 h-full">
-        <Image alt={t("workout_builder.session.complete") + " trophy"} className="w-56 h-56" src={TrophyImg} />
-        <h2 className="text-2xl font-bold mb-2">{t("workout_builder.session.complete") + " ! 🎉"}</h2>
-        <p className="text-lg text-slate-600 mb-6">{t("workout_builder.session.workout_in_progress")}</p>
-        <Button onClick={() => router.push("/profile")}>{t("commons.go_to_profile")}</Button>
-      </div>
-    );
-  }
+ if (showCongrats) {
+   return (
+     <div className="flex flex-col items-center justify-center py-16 h-full">
+       <Image alt={t("workout_builder.session.complete") + " trophy"} className="w-56 h-56" src={TrophyImg} />
+       <h2 className="text-2xl font-bold mb-2">{t("workout_builder.session.complete") + " ! 🎉"}</h2>
+       <p className="text-lg text-slate-600 mb-6">{t("workout_builder.session.workout_in_progress")}</p>
+        {cooldownStretches.length > 0 && (
+          <div className="w-full max-w-2xl mb-6 px-3">
+            <StretchRoutineSection
+              completedIds={completedCooldown}
+              onToggleComplete={(id) => toggleStretchComplete(id, "cooldown")}
+              phase="cooldown"
+              stretches={cooldownStretches}
+            />
+          </div>
+        )}
+       <Button onClick={() => router.push("/profile")}>{t("commons.go_to_profile")}</Button>
+     </div>
+   );
+ }
 
   if (!session) {
     return <div className="text-center text-slate-500 py-12">{t("workout_builder.session.no_exercise_selected")}</div>;
@@ -144,9 +187,17 @@ export function WorkoutSessionSets({
 
   return (
     <div className="w-full max-w-3xl mx-auto pb-8 px-3 sm:px-6">
-      <div className="mb-6">
-        <PremiumUpsellAlert />
-      </div>
+     <div className="mb-6">
+       <PremiumUpsellAlert />
+     </div>
+      {warmupStretches.length > 0 && (
+        <StretchRoutineSection
+          completedIds={completedWarmup}
+          onToggleComplete={(id) => toggleStretchComplete(id, "warmup")}
+          phase="warmup"
+          stretches={warmupStretches}
+        />
+      )}
       <ol className="relative border-l-2 ml-2 border-slate-200 dark:border-slate-700">
         {session.exercises.map((ex, idx) => {
           const allSetsCompleted = ex.sets.length > 0 && ex.sets.every((set) => set.completed);

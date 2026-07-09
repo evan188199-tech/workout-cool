@@ -1,135 +1,123 @@
 "use client";
 
-import { Dumbbell, Heart, Zap, Target, Calendar } from "lucide-react";
-import { ExerciseAttributeValueEnum } from "@prisma/client";
+import { useState } from "react";
+import { Dumbbell, Flame, Heart, Zap, Target, Calendar, Check } from "lucide-react";
 
+import { ExerciseAttributeValueEnum } from "@prisma/client";
 import { useI18n } from "locales/client";
 import { generateSplit, distributeVolumeForSplit, muscleFrequencyInSplit } from "@/features/training-science/model/split-generator";
-import { getMuscleSize } from "@/features/training-science/model/weekly-volume";
 import { getAttributeValueLabel } from "@/shared/lib/attribute-value-translation";
-import type { TrainingGoal, DaysPerWeek } from "@/features/training-science/model/types";
+import { intentToTrainingGoal } from "@/features/training-science/model/user-intent";
+import type { UserIntent } from "@/features/training-science/model/user-intent";
+import type { DaysPerWeek } from "@/features/training-science/model/types";
 
 import { cn } from "@/shared/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 interface GoalSplitSelectionProps {
-  selectedGoal: TrainingGoal;
+  selectedIntent: UserIntent;
   selectedDaysPerWeek: DaysPerWeek | null;
-  onGoalChange: (goal: TrainingGoal) => void;
+  onIntentChange: (intent: UserIntent) => void;
   onDaysChange: (days: DaysPerWeek | null) => void;
+  selectedSplitDay: number | null;
+  onSelectSplitDay: (dayNumber: number, muscles: ExerciseAttributeValueEnum[]) => void;
 }
 
-const GOAL_OPTIONS: { value: TrainingGoal; icon: typeof Dumbbell; labelKey: string }[] = [
-  { value: "strength", icon: Dumbbell, labelKey: "training_science.goal.strength" },
-  { value: "hypertrophy", icon: Zap, labelKey: "training_science.goal.hypertrophy" },
-  { value: "endurance", icon: Heart, labelKey: "training_science.goal.endurance" },
-  { value: "general", icon: Target, labelKey: "training_science.goal.general" },
+const INTENT_OPTIONS: { value: UserIntent; icon: typeof Dumbbell; label: string }[] = [
+  { value: "build_strength", icon: Dumbbell, label: "Get stronger" },
+  { value: "build_muscle", icon: Zap, label: "Build muscle" },
+  { value: "lose_fat", icon: Flame, label: "Lose fat" },
+  { value: "improve_endurance", icon: Heart, label: "Endurance" },
+  { value: "general_fitness", icon: Target, label: "Stay fit" },
 ];
 
 const DAYS_OPTIONS: DaysPerWeek[] = [2, 3, 4, 5];
 
 export function GoalSplitSelection({
-  selectedGoal,
+  selectedIntent,
   selectedDaysPerWeek,
-  onGoalChange,
+  onIntentChange,
   onDaysChange,
+  selectedSplitDay,
+  onSelectSplitDay,
 }: GoalSplitSelectionProps) {
-  const t = useI18n();
-
   return (
     <div className="space-y-6">
-      <GoalPicker selectedGoal={selectedGoal} onGoalChange={onGoalChange} t={t} />
-      <DaysPicker selectedDaysPerWeek={selectedDaysPerWeek} onDaysChange={onDaysChange} t={t} />
-      {selectedDaysPerWeek && (
-        <SplitPreview daysPerWeek={selectedDaysPerWeek} goal={selectedGoal} t={t} />
-      )}
-    </div>
-  );
-}
+      <div>
+        <h3 className="mb-3 text-sm font-semibold text-slate-600 dark:text-slate-400">
+          <Target className="inline h-4 w-4 mr-1.5" />
+          What is your goal?
+        </h3>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {INTENT_OPTIONS.map((opt) => {
+            const Icon = opt.icon;
+            const isSelected = selectedIntent === opt.value;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => onIntentChange(opt.value)}
+                className={cn(
+                  "flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all",
+                  isSelected
+                    ? "border-emerald-400 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-900/20"
+                    : "border-slate-200 bg-slate-50 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800",
+                )}
+              >
+                <Icon className={cn("h-6 w-6", isSelected ? "text-emerald-500" : "text-slate-400")} />
+                <span className={cn("text-xs font-medium", isSelected ? "text-emerald-700 dark:text-emerald-300" : "text-slate-600 dark:text-slate-400")}>
+                  {opt.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-function GoalPicker({
-  selectedGoal,
-  onGoalChange,
-  t,
-}: {
-  selectedGoal: TrainingGoal;
-  onGoalChange: (g: TrainingGoal) => void;
-  t: ReturnType<typeof useI18n>;
-}) {
-  return (
-    <div>
-      <h3 className="mb-3 text-sm font-semibold text-slate-600 dark:text-slate-400">
-        <Target className="inline h-4 w-4 mr-1.5" />
-        {t("training_science.select_goal")}
-      </h3>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {GOAL_OPTIONS.map((opt) => {
-          const Icon = opt.icon;
-          const isSelected = selectedGoal === opt.value;
-          return (
-            <button
-              key={opt.value}
-              onClick={() => onGoalChange(opt.value)}
-              className={cn(
-                "flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all",
-                isSelected
-                  ? "border-emerald-400 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-900/20"
-                  : "border-slate-200 bg-slate-50 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800",
-              )}
+      <div>
+        <h3 className="mb-3 text-sm font-semibold text-slate-600 dark:text-slate-400">
+          <Calendar className="inline h-4 w-4 mr-1.5" />
+          Days per week
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {DAYS_OPTIONS.map((days) => (
+            <Button
+              key={days}
+              onClick={() => onDaysChange(selectedDaysPerWeek === days ? null : days)}
+              variant={selectedDaysPerWeek === days ? "default" : "outline"}
+              className={cn("min-w-[3.5rem]", selectedDaysPerWeek === days && "bg-emerald-500 hover:bg-emerald-600")}
             >
-              <Icon className={cn("h-6 w-6", isSelected ? "text-emerald-500" : "text-slate-400")} />
-              <span className={cn("text-xs font-medium", isSelected ? "text-emerald-700 dark:text-emerald-300" : "text-slate-600 dark:text-slate-400")}>
-                {t(opt.labelKey as keyof typeof t)}
-              </span>
-            </button>
-          );
-        })}
+              {days}
+            </Button>
+          ))}
+        </div>
       </div>
-    </div>
-  );
-}
 
-function DaysPicker({
-  selectedDaysPerWeek,
-  onDaysChange,
-  t,
-}: {
-  selectedDaysPerWeek: DaysPerWeek | null;
-  onDaysChange: (d: DaysPerWeek | null) => void;
-  t: ReturnType<typeof useI18n>;
-}) {
-  return (
-    <div>
-      <h3 className="mb-3 text-sm font-semibold text-slate-600 dark:text-slate-400">
-        <Calendar className="inline h-4 w-4 mr-1.5" />
-        {t("training_science.select_days")}
-      </h3>
-      <div className="flex flex-wrap gap-2">
-        {DAYS_OPTIONS.map((days) => (
-          <Button
-            key={days}
-            onClick={() => onDaysChange(selectedDaysPerWeek === days ? null : days)}
-            variant={selectedDaysPerWeek === days ? "default" : "outline"}
-            className={cn("min-w-[3.5rem]", selectedDaysPerWeek === days && "bg-emerald-500 hover:bg-emerald-600")}
-          >
-            {days}
-          </Button>
-        ))}
-      </div>
+      {selectedDaysPerWeek && (
+        <SplitPreview
+          daysPerWeek={selectedDaysPerWeek}
+          intent={selectedIntent}
+          selectedSplitDay={selectedSplitDay}
+          onSelectSplitDay={onSelectSplitDay}
+        />
+      )}
     </div>
   );
 }
 
 function SplitPreview({
   daysPerWeek,
-  goal,
-  t,
+  intent,
+  selectedSplitDay,
+  onSelectSplitDay,
 }: {
   daysPerWeek: DaysPerWeek;
-  goal: TrainingGoal;
-  t: ReturnType<typeof useI18n>;
+  intent: UserIntent;
+  selectedSplitDay: number | null;
+  onSelectSplitDay: (dayNumber: number, muscles: ExerciseAttributeValueEnum[]) => void;
 }) {
+  const t = useI18n();
+  const goal = intentToTrainingGoal(intent);
   const split = generateSplit(daysPerWeek);
   const distributions = distributeVolumeForSplit(split, goal);
   const freqMap = muscleFrequencyInSplit(split);
@@ -137,21 +125,38 @@ function SplitPreview({
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400">
-        {t("training_science.split_preview")}
+        Pick today&apos;s training day
       </h3>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {split.days.map((day, idx) => {
           const dist = distributions[idx];
+          const isSelected = selectedSplitDay === day.dayNumber;
           return (
-            <Card key={day.dayNumber} className="border-slate-200 dark:border-slate-700">
+            <Card
+              key={day.dayNumber}
+              className={cn(
+                "cursor-pointer transition-all",
+                isSelected
+                  ? "border-2 border-emerald-500 shadow-md"
+                  : "border-slate-200 hover:border-emerald-300 dark:border-slate-700",
+              )}
+              onClick={() => onSelectSplitDay(day.dayNumber, day.muscles)}
+            >
               <CardContent className="p-3">
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-xs font-bold text-white">
-                    {day.dayNumber}
-                  </span>
-                  <span className="text-sm font-semibold capitalize">
-                    {t(day.labelKey as keyof typeof t)}
-                  </span>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold text-white",
+                        isSelected ? "bg-emerald-500" : "bg-slate-400",
+                      )}
+                    >
+                      {isSelected ? <Check className="h-3 w-3" /> : day.dayNumber}
+                    </span>
+                    <span className="text-sm font-semibold capitalize">
+                      {day.labelKey.split(".").pop()?.replace(/_/g, " ")}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {dist.map((alloc) => {
@@ -173,7 +178,7 @@ function SplitPreview({
         })}
       </div>
       <p className="text-xs text-slate-400">
-        {t("training_science.split_hint")}
+        Tap a day to load its muscles. You can fine-tune them in the next step.
       </p>
     </div>
   );

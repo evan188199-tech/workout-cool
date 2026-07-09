@@ -1384,6 +1384,7 @@ export default {
 
   profile: {
     new_workout: "New Workout",
+    body_weight: "Body Weight",
     alert: {
       title: "Your progress is stored in your browser.",
       create_account: "Create an account",
@@ -1512,10 +1513,55 @@ export default {
   },
 
   // Workout Builder
-  workout_builder: {
-    confirm_delete: "Are you sure you want to delete this workout session?",
-    steps: {
-      equipment: {
+ workout_builder: {
+   confirm_delete: "Are you sure you want to delete this workout session?",
+   goal_select: "Training goal",
+   goal_strength: "Strength",
+   goal_hypertrophy: "Hypertrophy",
+   goal_endurance: "Endurance",
+   goal_general: "General",
+   days_select: "Days per week",
+   split_preview: "Your weekly split",
+   split_hint: "Numbers show target sets per muscle. x2 means trained twice per week.",
+   split_fullbody_1: "Full Body A",
+   split_fullbody_2: "Full Body B",
+   split_ppl_1: "Push",
+   split_ppl_2: "Pull",
+   split_ppl_3: "Legs",
+   split_upperlower_1: "Upper A",
+   split_upperlower_2: "Lower A",
+   split_upperlower_3: "Upper B",
+   split_upperlower_4: "Lower B",
+   "split_ppl-ul_1": "Push",
+   "split_ppl-ul_2": "Pull",
+   "split_ppl-ul_3": "Legs",
+   "split_ppl-ul_4": "Upper",
+   "split_ppl-ul_5": "Lower + Core",
+  split_upper: "Upper",
+  split_lower_core: "Lower + Core",
+  quick: {
+    title: "Quick workout",
+    subtitle: "A low-intensity bodyweight loop that avoids today's planned muscles",
+    time_label: "How much time do you have?",
+    hint: "Great for a movement snack during work or on rest days.",
+    generate: "Generate quick workout",
+    generating: "Generating...",
+  },
+ weekly_adjustment: {
+   title: "Next week recommendation",
+   apply: "Apply",
+   applied: "Applied",
+   days_per_week: "days/week",
+ },
+ plan_session: {
+   title: "Quick plan session",
+   subtitle: "One-click today's full workout — advances your plan",
+    hint: "Select your equipment below, then generate instantly.",
+   generate: "Start today's training",
+   generating: "Generating...",
+ },
+  steps: {
+     equipment: {
         title: "Equipment",
         description: "Select your equipment",
       },
@@ -1596,7 +1642,13 @@ export default {
         label: "Bench",
         description: "Bench exercises and support",
       },
+      swiss_ball: {
+        label: "Swiss ball",
+        description: "Exercises on a stability ball",
+      },
     },
+    show_more: "Show more",
+    show_less: "Show less",
     navigation: {
       previous: "Previous",
       continue: "Continue",
@@ -1630,8 +1682,14 @@ export default {
       congrats_subtitle: "You've done it !",
       see_instructions: "See instructions",
       finish_set: "Finish Set",
-      finish_session: "Finish Session",
-      bodyweight: "Bodyweight",
+     finish_session: "Finish Session",
+      warmup_title: "Warm-up Stretches",
+      warmup_subtitle: "Dynamic stretches to activate your muscles before training. Tap to mark done.",
+      cooldown_title: "Cool-down Stretches",
+      cooldown_subtitle: "Static stretches to relax your muscles and aid recovery. Hold each for the duration shown.",
+      stretch_reps: "reps per side",
+      stretch_hold: "hold each side",
+     bodyweight: "Bodyweight",
       weight: "Weight",
       reps: "Reps",
       time: "Time",
@@ -1918,6 +1976,11 @@ export default {
     // Premium
     premium_required: "Premium required to access statistics",
 
+    total_workouts: "Total Workouts",
+    total_volume: "Total Volume",
+    total_sets: "Total Sets",
+    total_time: "Total Time",
+    top_exercises: "Top Exercises",
     // StatisticsPreviewOverlay
     premium_statistics: "Premium Statistics",
     premium_statistics_description: "Get detailed insights into your fitness journey with advanced analytics for each exercise.",

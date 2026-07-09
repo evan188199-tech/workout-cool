@@ -1,10 +1,12 @@
 import { Plus, Minus, Trash2 } from "lucide-react";
+import { useEffect } from "react";
 import { useI18n } from "locales/client";
 
 import { AVAILABLE_WORKOUT_SET_TYPES, MAX_WORKOUT_SET_COLUMNS } from "@/shared/constants/workout-set-types";
 import { WorkoutSet, WorkoutSetType, WorkoutSetUnit } from "@/features/workout-session/types/workout-set";
 import { getWorkoutSetTypeLabels } from "@/features/workout-session/lib/workout-set-labels";
 import { Button } from "@/components/ui/button";
+import { useBodyWeight } from "@/entities/user/model/use-body-weight";
 
 interface WorkoutSetRowProps {
   set: WorkoutSet;
@@ -18,11 +20,38 @@ export function WorkoutSessionSet({ set, setIndex, onChange, onFinish, onRemove 
   const t = useI18n();
   const types = set.types || [];
   const typeLabels = getWorkoutSetTypeLabels(t);
+  const { data: bodyWeightData } = useBodyWeight();
+  const bodyWeight = bodyWeightData?.weight ?? 0;
+  const bodyWeightUnit = bodyWeightData?.unit ?? "kg";
+
+  // Auto-fill body weight for BODYWEIGHT columns that have no value yet.
+  useEffect(() => {
+    if (!bodyWeight || set.completed) return;
+    const bwIndex = types.indexOf("BODYWEIGHT");
+    if (bwIndex === -1) return;
+    const valuesInt = set.valuesInt ?? [];
+    if (valuesInt[bwIndex]) return; // already filled
+    const newValuesInt = Array.from({ length: types.length }, (_, i) => valuesInt[i] ?? 0);
+    newValuesInt[bwIndex] = bodyWeight;
+    const newUnits = Array.from({ length: types.length }, (_, i) => (set.units ?? [])[i] ?? "kg");
+    newUnits[bwIndex] = bodyWeightUnit;
+    onChange(setIndex, { valuesInt: newValuesInt, units: newUnits });
+  }, [bodyWeight, bodyWeightUnit]);
 
   const handleTypeChange = (columnIndex: number) => (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newTypes = [...types];
     newTypes[columnIndex] = e.target.value as WorkoutSetType;
-    onChange(setIndex, { types: newTypes });
+    const patch: Partial<WorkoutSet> = { types: newTypes };
+    // Pre-fill BODYWEIGHT with the user's body weight when switching to it.
+    if (e.target.value === "BODYWEIGHT" && !(set.valuesInt ?? [])[columnIndex]) {
+      const newValuesInt = [...(set.valuesInt ?? [])];
+      newValuesInt[columnIndex] = bodyWeight;
+      patch.valuesInt = newValuesInt;
+      const newUnits = [...(set.units ?? [])];
+      newUnits[columnIndex] = bodyWeightUnit;
+      patch.units = newUnits;
+    }
+    onChange(setIndex, patch);
   };
 
   const handleValueIntChange = (columnIndex: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,6 +133,7 @@ export function WorkoutSessionSet({ set, setIndex, onChange, onFinish, onRemove 
           </div>
         );
       case "WEIGHT":
+      case "BODYWEIGHT":
         return (
           <div className="flex gap-1 w-full items-center">
             <input
@@ -138,16 +168,6 @@ export function WorkoutSessionSet({ set, setIndex, onChange, onFinish, onRemove 
             placeholder=""
             type="number"
             value={valuesInt[columnIndex] ?? ""}
-          />
-        );
-      case "BODYWEIGHT":
-        return (
-          <input
-            className="border border-black rounded px-1 py-2 w-full text-base text-center font-bold dark:bg-slate-800"
-            disabled={set.completed}
-            placeholder=""
-            readOnly
-            value="✔"
           />
         );
       default:

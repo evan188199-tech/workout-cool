@@ -236,6 +236,21 @@ You can use the provided example.
 
 ### Import Commands
 
+### Exercise Data Source & Rights
+
+The sample data (`data/sample-exercises.csv`) is safe to commit and is the
+recommended starting point. For a larger set, a local conversion script
+(`scripts/convert-exercisedb-dataset.ts`) can turn an ExerciseDB-derived
+dataset into the CSV format above. Both the dataset JSON and the generated
+CSV are gitignored and never committed.
+
+That tooling, and any data it produces, carries third-party rights you must
+respect: exercise metadata originates from ExerciseDB v1, the exercise media is
+**not licensed** (hotlinks are for local dev only), and the multilingual
+translations are **not licensed** for redistribution. Review the full
+attribution and rights details in [NOTICE](NOTICE) before importing or serving
+any converted data.
+
 ```bash
 # Import exercises from a CSV file
 pnpm run import:exercises-full /path/to/your/exercises.csv

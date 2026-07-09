@@ -98,9 +98,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         sets: {
           where: {
             completed: true,
-            types: {
-              hasEvery: ["WEIGHT", "REPS"],
-            },
           },
           orderBy: {
             setIndex: "asc",
@@ -123,7 +120,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
       sessionExercise.sets.forEach((set) => {
         // Find weight and reps values from arrays
-        const weightIndex = set.types.indexOf("WEIGHT");
+        const weightIndex = set.types.indexOf("WEIGHT") !== -1 ? set.types.indexOf("WEIGHT") : set.types.indexOf("BODYWEIGHT");
         const repsIndex = set.types.indexOf("REPS");
 
         if (weightIndex !== -1 && repsIndex !== -1 && set.valuesInt && set.valuesInt[weightIndex] && set.valuesInt[repsIndex]) {

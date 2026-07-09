@@ -1,3 +1,23 @@
+/**
+ * convert-exercisedb-dataset.ts
+ *
+ * Converts an ExerciseDB-derived dataset (data/exercises-dataset.json) into
+ * the CSV format expected by import-exercises-with-attributes.ts.
+ *
+ * RIGHTS NOTICE — read before running, see ./NOTICE for full details:
+ *   - Metadata (name, muscles, equipment, EN instructions): from ExerciseDB v1,
+ *     upstream MIT (yuhonal/free-exercise-database); the hasaneyldrm/exercises-dataset
+ *     mirror declares NO license, so reuse is personal/local only.
+ *   - Media: this script builds hotlinks to static.exercisedb.dev GIFs from
+ *     media_id. The media is NOT licensed and has conflicting ownership claims.
+ *     Keep for LOCAL development only; do not ship to a production/commercial
+ *     deployment without securing the rights.
+ *   - Translations (ES/IT/TR/RU/ZH): added by the mirror maintainer with no
+ *     license — personal/local use only; do not redistribute.
+ *
+ * The generated CSV (data/exercises-import.csv) is gitignored and is never
+ * committed. The operator is responsible for any content they import and serve.
+ */
 import path from "path";
 import fs from "fs";
 
@@ -108,6 +128,48 @@ const MUSCLE_ALIAS_MAP: Record<string, string> = {
   shoulders: "SHOULDERS",
 };
 
+/**
+ * Detect exercises tagged "body weight" in the source dataset that actually
+ * require dedicated fitness equipment (pull-up bar, dip station, bench, TRX,
+ * roman chair, etc.). These should NOT be classified as BODY_ONLY — they need
+ * gear the user may not own.
+ *
+ * Returns the correct ExerciseAttributeValueEnum string, or null if the
+ * exercise is genuinely equipment-free and should stay BODY_ONLY.
+ */
+function detectBodyweightEquipment(name: string): string | null {
+  const n = name.toLowerCase();
+
+  // Suspension trainer / TRX / gymnastic rings
+  if (/suspended|strap|ring dip/.test(n)) return "TRX";
+
+  // Pull-up bar: pull-ups, chin-ups, muscle-ups, hanging work, and
+  // bar-grip "chin" variants (gorilla chin, sternum chin, side-to-side chin).
+  if (/\b(pull|chin|muscle)[-\s]?ups?\b|\bchin\b/.test(n)) return "PULLUP_BAR";
+  if (/\bhanging\b/.test(n)) return "PULLUP_BAR";
+  if (/skin the cat|swing 360/.test(n)) return "PULLUP_BAR";
+
+  // Bench / Roman chair / GHD / hyperextension bench
+  if (/hyperextension|glute[-\s]?ham raise/.test(n)) return "BENCH";
+  if (/\bbench\b/.test(n)) return "BENCH";
+
+  // Parallel bars / dip station (exclude bench / floor / elbow variants)
+  if (/parallel bar|dip[-\s]?pull[-\s]?up cage/.test(n)) return "BAR";
+  if (/\bdips?\b/.test(n) && !/bench|floor|elbow/.test(n)) return "BAR";
+  if (/body[-\s]?up|side hip \(on/.test(n)) return "BAR";
+
+  // Remaining dips (elbow dips, floor dips) all use a bench/chair edge
+  if (/\bdips?\b/.test(n)) return "BENCH";
+
+  // Box (for jumps / elevated push-ups)
+  if (/box jump|depth jump|\bon box\b/.test(n)) return "BOX";
+
+  // Captain's chair / vertical knee raise station / balance board
+  if (/captains chair|balance board/.test(n)) return "OTHER";
+
+  return null;
+}
+
 function slugify(s: string): string {
   return s
     .toLowerCase()
@@ -179,9 +241,18 @@ function main() {
   let bodyweightCount = 0;
   let cardioCount = 0;
   let coreCount = 0;
-  let muscleFallback = 0;
-  let equipFallback = 0;
-  const dupSlug = new Map<string, number>();
+ let muscleFallback = 0;
+ let equipFallback = 0;
+ const dupSlug = new Map<string, number>();
+ let angleRemapCount = 0;
+  let bodyweightReclassified = 0;
+
+ // Exercises whose name signals an adjustable (incline/decline) bench are
+  // gated behind the BENCH equipment so they only surface when the user owns
+  // an adjustable bench. Ball-type equipment is left alone (stability ball,
+  // medicine ball, bosu ball are their own selection).
+  const BALL_EQUIPMENT = new Set(["stability ball", "medicine ball", "bosu ball"]);
+  const requiresAdjustableBench = (name: string) => /\b(incline|decline)\b/i.test(name);
 
   for (const ex of data) {
     const nameEn = ex.name;
@@ -231,27 +302,44 @@ function main() {
 
     const attrs: { name: string; value: string }[] = [];
 
-    // TYPE
-    const isCardio = ex.body_part === "cardio";
-    const isBodyweight = ex.equipment === "body weight";
-    let typeValue: string;
-    if (isCardio) {
-      typeValue = "CARDIO";
-      cardioCount++;
-    } else if (isBodyweight) {
-      typeValue = "CALISTHENIC";
+   // TYPE
+   const isCardio = ex.body_part === "cardio";
+   const isBodyweight = ex.equipment === "body weight";
+    // "body weight" in the source dataset includes pull-ups, dips, lever work,
+    // etc. — these need a bar / bench / TRX and are NOT pure bodyweight.
+    const bodyweightGear = isBodyweight ? detectBodyweightEquipment(nameEn) : null;
+    const isPureBodyweight = isBodyweight && bodyweightGear === null;
+   let typeValue: string;
+   if (isCardio) {
+     typeValue = "CARDIO";
+     cardioCount++;
+    } else if (isPureBodyweight) {
+     typeValue = "CALISTHENIC";
+   } else {
+     typeValue = "STRENGTH";
+   }
+   attrs.push({ name: "TYPE", value: typeValue });
+
+    if (isPureBodyweight) bodyweightCount++;
+
+   // EQUIPMENT
+    let equipValue: string;
+    if (isBodyweight) {
+      // Override the BODY_ONLY tag with the detected gear (or keep BODY_ONLY
+      // only when the exercise is genuinely equipment-free).
+      equipValue = bodyweightGear ?? "BODY_ONLY";
+      if (bodyweightGear) bodyweightReclassified++;
     } else {
-      typeValue = "STRENGTH";
+      equipValue = EQUIPMENT_MAP[ex.equipment.toLowerCase().trim()];
+      if (!equipValue) {
+       equipValue = "OTHER";
+       equipFallback++;
+     }
     }
-    attrs.push({ name: "TYPE", value: typeValue });
-
-    if (isBodyweight) bodyweightCount++;
-
-    // EQUIPMENT
-    let equipValue = EQUIPMENT_MAP[ex.equipment.toLowerCase().trim()];
-    if (!equipValue) {
-      equipValue = "OTHER";
-      equipFallback++;
+   // incline/decline moves need an adjustable bench: only surface them under BENCH
+   if (requiresAdjustableBench(nameEn) && !BALL_EQUIPMENT.has(ex.equipment.toLowerCase().trim())) {
+      equipValue = "BENCH";
+      angleRemapCount++;
     }
     attrs.push({ name: "EQUIPMENT", value: equipValue });
 
@@ -296,6 +384,8 @@ function main() {
   console.log(`Core (body_part=waist): ${coreCount}`);
   console.log(`Muscle fallbacks (unmapped target -> NA): ${muscleFallback}`);
   console.log(`Equipment fallbacks (-> OTHER): ${equipFallback}`);
+ console.log(`Incline/decline remapped to BENCH: ${angleRemapCount}`);
+  console.log(`Bodyweight reclassified to equipment: ${bodyweightReclassified}`);
 }
 
 main();

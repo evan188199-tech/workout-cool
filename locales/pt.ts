@@ -1389,6 +1389,7 @@ export default {
 
   profile: {
     new_workout: "Novo treino",
+    body_weight: "Peso corporal",
     alert: {
       title: "O seu progresso está guardado no navegador.",
       create_account: "Crie uma conta",
@@ -1601,6 +1602,8 @@ export default {
         description: "Exercícios de banco e apoio",
       },
     },
+    show_more: "Mostrar mais",
+    show_less: "Mostrar menos",
     navigation: {
       previous: "Anterior",
       continue: "Continuar",
@@ -1634,8 +1637,14 @@ export default {
       congrats_subtitle: "Conseguiu!",
       see_instructions: "Ver instruções",
       finish_set: "Concluir série",
-      finish_session: "Terminar sessão",
-      bodyweight: "Peso corporal",
+     finish_session: "Terminar sessão",
+      warmup_title: "Alongamentos de aquecimento",
+      warmup_subtitle: "Alongamentos dinâmicos para ativar seus músculos antes do treino. Toque para marcar como feito.",
+      cooldown_title: "Alongamentos de relaxamento",
+      cooldown_subtitle: "Alongamentos estáticos para relaxar os músculos e favorecer a recuperação. Mantenha cada um pela duração indicada.",
+      stretch_reps: "rep. por lado",
+      stretch_hold: "segundos por lado",
+     bodyweight: "Peso corporal",
       weight: "Peso",
       reps: "Reps",
       time: "Tempo",
@@ -1922,6 +1931,11 @@ export default {
     // Premium
     premium_required: "Premium necessário para acessar estatísticas",
 
+    total_workouts: "Total Treinos",
+    total_volume: "Volume Total",
+    total_sets: "Total Séries",
+    total_time: "Tempo Total",
+    top_exercises: "Top Exercícios",
     // StatisticsPreviewOverlay
     premium_statistics: "Estatísticas Premium",
     premium_statistics_description: "Obtenha insights detalhados sobre sua jornada fitness com análises avançadas para cada exercício.",

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Header } from "@/features/layout/Header";
 import { Footer } from "@/features/layout/Footer";
 import { BottomNavigation } from "@/features/layout/BottomNavigation";
+import { LanAccessQr } from "@/components/lan-access-qr";
 
 interface RootLayoutProps {
   params: Promise<{ locale: string }>;
@@ -16,6 +17,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
       <div className="flex-1 flex flex-col max-sm:pb-16">{children}</div>
       <BottomNavigation />
       <Footer />
+      <LanAccessQr />
     </div>
   );
 }

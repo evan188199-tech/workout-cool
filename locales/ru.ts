@@ -1375,6 +1375,7 @@ export default {
 
   profile: {
     new_workout: "Новая тренировка",
+    body_weight: "Вес тела",
     alert: {
       title: "Ваш прогресс сохраняется в браузере.",
       create_account: "Создать аккаунт",
@@ -1591,6 +1592,8 @@ export default {
         description: "Упражнения на скамье и поддержка",
       },
     },
+    show_more: "Показать ещё",
+    show_less: "Показать меньше",
     navigation: {
       home: "Главная",
       previous: "Назад",
@@ -1625,8 +1628,14 @@ export default {
       congrats_subtitle: "Вы справились!",
       see_instructions: "Смотреть инструкции",
       finish_set: "Завершить подход",
-      finish_session: "Завершить сессию",
-      bodyweight: "Собственный вес",
+     finish_session: "Завершить сессию",
+      warmup_title: "Разминочная растяжка",
+      warmup_subtitle: "Динамическая растяжка для активации мышц перед тренировкой. Нажмите, чтобы отметить.",
+      cooldown_title: "Заминочная растяжка",
+      cooldown_subtitle: "Статическая растяжка для расслабления мышц и восстановления. Удерживайте каждую указанное время.",
+      stretch_reps: "повт. на сторону",
+      stretch_hold: "секунд на сторону",
+     bodyweight: "Собственный вес",
       weight: "Вес",
       reps: "Повторения",
       time: "Время",
@@ -1912,6 +1921,11 @@ export default {
     // Premium
     premium_required: "Требуется Premium для доступа к статистике",
 
+    total_workouts: "Всего тренировок",
+    total_volume: "Общий объём",
+    total_sets: "Всего подходов",
+    total_time: "Общее время",
+    top_exercises: "Топ упражнений",
     // StatisticsPreviewOverlay
     premium_statistics: "Премиум Статистика",
     premium_statistics_description: "Получите подробную информацию о вашем фитнес-пути с расширенной аналитикой для каждого упражнения.",

@@ -5,6 +5,7 @@ import Plate from "@public/images/equipment/plate.png";
 import Kettlebell from "@public/images/equipment/kettlebell.png";
 import Dumbbell from "@public/images/equipment/dumbbell.png";
 import Bodyweight from "@public/images/equipment/bodyweight.png";
+import SwissBall from "@public/images/equipment/swiss-ball.png";
 import Bench from "@public/images/equipment/bench.png";
 import Barbell from "@public/images/equipment/barbell.png";
 import Band from "@public/images/equipment/band.png";
@@ -66,6 +67,13 @@ export const EQUIPMENT_CONFIG: EquipmentItem[] = [
     label: "Bench",
     icon: Bench,
     description: "Bench exercises and support",
+    className: "h-12 w-12",
+  },
+  {
+    value: ExerciseAttributeValueEnum.SWISS_BALL,
+    label: "Swiss ball",
+    icon: SwissBall,
+    description: "Exercises on a stability ball",
     className: "h-12 w-12",
   },
 ];

@@ -2,27 +2,37 @@
 * {
 }
 .h1 {
-  @apply text-5xl font-extrabold;
+  font-size: 3rem;        /* text-5xl */
+  line-height: 1;
+  font-weight: 800;       /* font-extrabold */
 }
 
 .h2 {
-  @apply text-4xl font-extrabold;
+  font-size: 2.25rem;     /* text-4xl */
+  line-height: 2.25rem;
+  font-weight: 800;
 }
 
 .h3 {
-  @apply text-3xl font-extrabold;
+  font-size: 1.875rem;    /* text-3xl */
+  line-height: 2.25rem;
+  font-weight: 800;
 }
 
 .h4 {
-  @apply text-2xl font-extrabold;
+  font-size: 1.5rem;      /* text-2xl */
+  line-height: 2rem;
+  font-weight: 800;
 }
 
 @media (min-width: 768px) {
   .h1 {
-    @apply text-6xl;
+    font-size: 3.5rem;    /* text-6xl */
+    line-height: 1;
   }
 
   .h2 {
-    @apply text-5xl;
+    font-size: 3rem;      /* text-5xl */
+    line-height: 1;
   }
 }

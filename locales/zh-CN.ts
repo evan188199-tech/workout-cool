@@ -517,6 +517,7 @@ export default {
 
   profile: {
     new_workout: "新的锻炼",
+    body_weight: "体重",
     alert: {
       title: "您的进度存储在浏览器中。",
       create_account: "创建账户",
@@ -638,10 +639,31 @@ export default {
     threads: "Threads",
   },
 
-  // Workout Builder
-  workout_builder: {
-    confirm_delete: "您确定要删除此锻炼回合吗？",
-    steps: {
+ // Workout Builder
+ workout_builder: {
+   confirm_delete: "您确定要删除此锻炼回合吗？",
+   quick: {
+     title: "摸鱼锻炼",
+     subtitle: "低强度自重循环，自动避让今日计划肌群",
+     time_label: "大概能练多久？",
+     hint: "适合工位间隙或休息日来一组。",
+     generate: "生成摸鱼训练",
+     generating: "生成中...",
+   },
+   weekly_adjustment: {
+     title: "下周计划建议",
+     apply: "应用",
+     applied: "已应用",
+     days_per_week: "天/周",
+   },
+   plan_session: {
+     title: "临时推进训练",
+     subtitle: "一键生成今日完整训练，推进你的计划",
+      hint: "先在下方选好器械，然后一键生成。",
+     generate: "开始今日训练",
+     generating: "生成中...",
+   },
+   steps: {
       equipment: {
         title: "设备",
         description: "选择您的设备",
@@ -722,7 +744,13 @@ export default {
         label: "长凳",
         description: "长凳练习和支撑",
       },
+      swiss_ball: {
+        label: "健身球",
+        description: "在平衡球上进行的练习",
+      },
     },
+    show_more: "显示更多",
+    show_less: "显示更少",
     navigation: {
       previous: "上一步",
       continue: "继续",
@@ -756,8 +784,14 @@ export default {
       congrats_subtitle: "您做到了！",
       see_instructions: "查看说明",
       finish_set: "完成组",
-      finish_session: "完成回合",
-      bodyweight: "自重",
+     finish_session: "完成回合",
+      warmup_title: "热身拉伸",
+      warmup_subtitle: "训练前进行动态拉伸,激活目标肌群、提高关节活动度。点击标记完成。",
+      cooldown_title: "放松拉伸",
+      cooldown_subtitle: "训练后进行静态拉伸,放松肌肉、促进恢复。每侧保持标注的时长。",
+      stretch_reps: "次 / 每侧",
+      stretch_hold: "秒 / 每侧",
+     bodyweight: "自重",
       weight: "重量",
       reps: "次数",
       time: "时间",
@@ -1857,6 +1891,11 @@ export default {
     // Premium
     premium_required: "需要高级版才能访问统计数据",
 
+    total_workouts: "总锻炼次数",
+    total_volume: "总训练量",
+    total_sets: "总组数",
+    total_time: "总锻炼时间",
+    top_exercises: "训练量排名",
     // StatisticsPreviewOverlay
     premium_statistics: "高级统计",
     premium_statistics_description: "通过每个练习的高级分析，获得关于您健身之旅的详细见解。",

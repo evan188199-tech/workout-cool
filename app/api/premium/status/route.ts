@@ -55,9 +55,11 @@ export async function GET(request: NextRequest) {
     });
 
     // Determine premium status and source
+    // Self-hosted policy: any authenticated user is premium (no ads, all
+    // features). We keep gathering subscription details for display only.
     const hasRevenueCatSub = activeSubscriptions.some((sub) => sub.revenueCatUserId);
     const hasStripeSub = activeSubscriptions.some((sub) => !sub.revenueCatUserId && sub.platform === "WEB");
-    const isPremium = dbUser?.isPremium || activeSubscriptions.length > 0;
+    const isPremium = true;
 
     // Find the most relevant subscription to display
     const primarySubscription = activeSubscriptions.find((sub) => sub.revenueCatUserId) || activeSubscriptions[0];

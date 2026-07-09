@@ -11,28 +11,32 @@ import { ExerciseAttributeValueEnum } from "@prisma/client";
 import { StepperStepProps } from "../types";
 import { useWorkoutStepper } from "../hooks/use-workout-stepper";
 import { useWorkoutSession } from "../../workout-session/model/use-workout-session";
+import { TodayTrainingCard } from "./today-training-card";
 import { StepperHeader } from "./stepper-header";
+import { SessionFinisherCard } from "./session-finisher-card";
+import { QuickTrainingCard } from "./quick-training-card";
+import { QuickPlanSessionCard } from "./quick-plan-session-card";
 import { MuscleSelection } from "./muscle-selection";
 import { ExercisesSelection } from "./exercises-selection";
 import { EquipmentSelection } from "./equipment-selection";
 import { AddExerciseModal } from "./add-exercise-modal";
 
-import { GoalSplitSelection } from "./goal-split-selection";
-import { generateSplit } from "@/features/training-science/model/split-generator";
 
+import type { DayRecommendationResult } from "@/features/training-science/actions/training-plan.action";
 import type { ExerciseWithAttributes, WorkoutBuilderStep } from "../types";
 
+import { quickTrainingLocal } from "@/shared/lib/workout-session/quick-training.local";
 import useBoolean from "@/shared/hooks/useBoolean";
 import { WorkoutSessionSets } from "@/features/workout-session/ui/workout-session-sets";
 import { WorkoutSessionHeader } from "@/features/workout-session/ui/workout-session-header";
-import { DonationModal } from "@/features/workout-session/ui/donation-modal";
-import { useDonationModal } from "@/features/workout-session/hooks/use-donation-modal";
+import { RestTimer } from "@/features/workout-session/ui/rest-timer";
 import { WorkoutBuilderFooter } from "@/features/workout-builder/ui/workout-stepper-footer";
+import { getFinishersForIntent } from "@/features/training-science/model/session-finisher";
 import { env } from "@/env";
 import { Button } from "@/components/ui/button";
 import { HorizontalTopBanner, HorizontalBottomBanner } from "@/components/ads";
 
-export function WorkoutStepper() {
+export function WorkoutStepper({ serverRecommendation }: { serverRecommendation?: DayRecommendationResult | null }) {
   const { loadSessionFromLocal } = useWorkoutSession();
 
   const t = useI18n();
@@ -60,9 +64,23 @@ export function WorkoutStepper() {
     goToStep,
     deleteExercise,
   } = useWorkoutStepper();
-  const { selectedGoal, selectedDaysPerWeek, setGoal, setDaysPerWeek } = useWorkoutStepper();
+ const { selectedSplitDay, selectSplitDay } = useWorkoutStepper();
+ const { selectedIntent } = useWorkoutStepper();
+
+  const handleStartRecommendedDay = (dayNumber: number, muscles: ExerciseAttributeValueEnum[]) => {
+    selectSplitDay(dayNumber, muscles);
+    nextStep();
+  };
+
   useEffect(() => {
     loadSessionFromLocal();
+  }, []);
+
+  useEffect(() => {
+    const saved = quickTrainingLocal.getTimeBudget();
+    if (saved !== quickTimeBudget) {
+      setQuickTimeBudget(saved);
+    }
   }, []);
 
   const [flatExercises, setFlatExercises] = useState<{ id: string; muscle: string; exercise: ExerciseWithAttributes }[]>([]);
@@ -80,13 +98,24 @@ export function WorkoutStepper() {
     }
   }, [exercisesByMuscle]);
 
-  useEffect(() => {
-    if (currentStep === 3 && !fromSession) {
-      fetchExercises();
-    }
-  }, [currentStep, selectedEquipment, selectedMuscles, fromSession]);
+ useEffect(() => {
+   if (currentStep === 3 && !fromSession) {
+      // Skip the regular exercise fetch when the quick-session generator
+      // already populated exercises (otherwise it overwrites the whitelisted
+      // results with an unfiltered BODY_ONLY query).
+      if (!quickMode) {
+        fetchExercises();
+      }
+   }
+ }, [currentStep, selectedEquipment, selectedMuscles, fromSession]);
 
-  const { isWorkoutActive, session, startWorkout, quitWorkout } = useWorkoutSession();
+ const { isWorkoutActive, session, startWorkout, quitWorkout } = useWorkoutSession();
+
+  const { quickTimeBudget, setQuickTimeBudget, generateQuickSession, isGeneratingQuick, quickError } = useWorkoutStepper();
+
+ const { isGeneratingPlanSession, planSessionError, generatePlanSession } = useWorkoutStepper();
+  const { quickMode } = useWorkoutStepper();
+  const { quickSetScheme } = useWorkoutStepper();
 
   const canContinue = currentStep === 1 ? canProceedToStep2 : currentStep === 2 ? canProceedToStep3 : exercisesByMuscle.length > 0;
 
@@ -141,16 +170,15 @@ export function WorkoutStepper() {
     return [...orderedResults, ...remainingExercises];
   }, [flatExercises, exercisesOrder]);
 
-  const handleStartWorkout = () => {
-    if (orderedExercises.length > 0) {
-      startWorkout(orderedExercises, selectedEquipment, selectedMuscles);
-    } else {
-      console.log("🚀 [WORKOUT-STEPPER] No exercises to start workout with!");
-    }
-  };
+const handleStartWorkout = () => {
+  if (orderedExercises.length > 0) {
+     startWorkout(orderedExercises, selectedEquipment, selectedMuscles, selectedSplitDay, quickMode ? quickSetScheme : null);
+   } else {
+     console.log("🚀 [WORKOUT-STEPPER] No exercises to start workout with!");
+   }
+ };
 
   const [showCongrats, setShowCongrats] = useState(false);
-  const { showModal, openModal, closeModal } = useDonationModal();
 
   const goToProfile = () => {
     router.push("/profile");
@@ -158,10 +186,6 @@ export function WorkoutStepper() {
 
   const handleCongrats = () => {
     setShowCongrats(true);
-    // Show donation modal after congrats screen appears
-    setTimeout(() => {
-      openModal();
-    }, 400);
   };
 
   const handleToggleEquipment = (equipment: ExerciseAttributeValueEnum) => {
@@ -185,20 +209,29 @@ export function WorkoutStepper() {
     }
   };
 
-  if (showCongrats && !isWorkoutActive) {
-    return (
-      <>
-        <div className="flex flex-col items-center justify-center py-16 h-full">
-          <Image alt="Trophée" className="w-56 h-56" src={Trophy} />
-          <h2 className="text-2xl font-bold mb-2 text-center">{t("workout_builder.session.congrats")}</h2>
-          <p className="text-lg text-slate-600 mb-6">{t("workout_builder.session.congrats_subtitle")}</p>
-          <Button onClick={goToProfile}>{t("commons.go_to_profile")}</Button>
-        </div>
-        {/* Donation Modal */}
-        <DonationModal isOpen={showModal} onClose={closeModal} />
-      </>
-    );
-  }
+ if (showCongrats && !isWorkoutActive) {
+   // Finishers (e.g. fat-loss cardio + nutrition) only show for relevant intents.
+   // Prefer the intent from the saved training plan, fall back to the store.
+   const finisherIntent = serverRecommendation?.intent ?? selectedIntent;
+   const sessionIndex = serverRecommendation?.plan?.completedSessions ?? 0;
+   const finishers = finisherIntent ? getFinishersForIntent(finisherIntent, sessionIndex) : [];
+
+   return (
+     <>
+       <div className="flex flex-col items-center justify-center py-16 h-full">
+         <Image alt="Trophée" className="w-56 h-56" src={Trophy} />
+         <h2 className="text-2xl font-bold mb-2 text-center">{t("workout_builder.session.congrats")}</h2>
+         <p className="text-lg text-slate-600 mb-6">{t("workout_builder.session.congrats_subtitle")}</p>
+         {finishers.length > 0 && (
+           <div className="w-full max-w-md mb-6">
+             <SessionFinisherCard finishers={finishers} />
+           </div>
+         )}
+         <Button onClick={goToProfile}>{t("commons.go_to_profile")}</Button>
+       </div>
+     </>
+   );
+ }
 
   if (isWorkoutActive && session) {
     return (
@@ -210,8 +243,9 @@ export function WorkoutStepper() {
           />
         )}
         {!showCongrats && <WorkoutSessionHeader onQuitWorkout={quitWorkout} />}
-        <WorkoutSessionSets isWorkoutActive={isWorkoutActive} onCongrats={handleCongrats} showCongrats={showCongrats} />
-      </div>
+       <WorkoutSessionSets isWorkoutActive={isWorkoutActive} onCongrats={handleCongrats} showCongrats={showCongrats} />
+       <RestTimer />
+     </div>
     );
   }
 
@@ -247,26 +281,25 @@ export function WorkoutStepper() {
 
   const renderStepContent = () => {
     switch (currentStep) {
-      case 1:
-        return (
-          <div className="space-y-6">
-            <GoalSplitSelection
-              selectedGoal={selectedGoal}
-              selectedDaysPerWeek={selectedDaysPerWeek}
-              onGoalChange={setGoal}
-              onDaysChange={setDaysPerWeek}
-            />
-          <EquipmentSelection
-            onClearEquipment={handleClearEquipment}
-            onToggleEquipment={handleToggleEquipment}
-            selectedEquipment={selectedEquipment}
-          />
+     case 1:
+       return (
+         <EquipmentSelection
+           onClearEquipment={handleClearEquipment}
+           onToggleEquipment={handleToggleEquipment}
+           selectedEquipment={selectedEquipment}
+         />
+       );
+     case 2:
+       return (
+          <div className="space-y-4">
+            {selectedSplitDay && (
+              <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-4 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+                Day {selectedSplitDay} muscles loaded from your split. Adjust if needed.
+              </div>
+            )}
+         <MuscleSelection onToggleMuscle={handleToggleMuscle} selectedEquipment={selectedEquipment} selectedMuscles={selectedMuscles} />
           </div>
-        );
-      case 2:
-        return (
-          <MuscleSelection onToggleMuscle={handleToggleMuscle} selectedEquipment={selectedEquipment} selectedMuscles={selectedMuscles} />
-        );
+       );
       case 3:
         return (
           <ExercisesSelection
@@ -362,6 +395,39 @@ export function WorkoutStepper() {
   return (
     <div className="w-full max-w-6xl mx-auto h-full">
       {renderTopBanner()}
+
+     {currentStep === 1 && serverRecommendation && (
+       <div className="mb-6">
+         <TodayTrainingCard
+           onStartDay={handleStartRecommendedDay}
+           recommendation={serverRecommendation}
+         />
+       </div>
+     )}
+
+      {currentStep === 1 && (
+        <div className="mb-6">
+          <QuickTrainingCard
+            error={quickError}
+            isGenerating={isGeneratingQuick}
+            onGenerate={() => generateQuickSession()}
+            onTimeBudgetChange={setQuickTimeBudget}
+            selectedTimeBudget={quickTimeBudget}
+          />
+        </div>
+      )}
+
+      {currentStep === 1 && serverRecommendation && (
+        <div className="mb-6">
+          <QuickPlanSessionCard
+            error={planSessionError}
+            isGenerating={isGeneratingPlanSession}
+            onGenerate={() => generatePlanSession(serverRecommendation.recommendedDay, serverRecommendation.muscles)}
+            recommendation={serverRecommendation}
+            selectedEquipmentCount={selectedEquipment.length}
+          />
+        </div>
+      )}
 
       <StepperHeader currentStep={currentStep} onStepClick={handleStepClick} steps={steps} />
 

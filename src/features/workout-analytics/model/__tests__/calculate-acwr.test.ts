@@ -49,10 +49,12 @@ describe("calculateACWR", () => {
       reps: 0,
       durationSec: 3600,
     });
-    const res = calculateACWR({ sets, asOf });
-    // Ratio stays ~1.0 green, NOT red. Cardio is ignored.
-    expect(res.zone).not.toBe("red");
-    expect(res.acuteLoad).toBeLessThan(3600 + 1);
+   const res = calculateACWR({ sets, asOf });
+   // Ratio stays ~1.0 green, NOT red. Cardio is ignored.
+   expect(res.zone).not.toBe("red");
+    // Cardio (3600s) excluded from strength volume: acuteLoad unchanged from
+    // the pure-strength baseline. Strength-only acute = 7d * 3 sets * 100kg * 10.
+    expect(res.acuteLoad).toBe(21000);
   });
 
   it("FIX #3: EWMA cold start handles a rest day at window start", () => {

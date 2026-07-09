@@ -17,63 +17,30 @@ export const getUserPositionAction = actionClient.schema(inputSchema).action(asy
   try {
     const { startDate, endDate } = getDateRangeForPeriod(period);
 
+    // Only count completed sessions (endedAt is set) — not sessions that were
+    // started but quit before finishing.
+    const dateFilter = startDate
+      ? { startedAt: { gte: startDate, lte: endDate }, endedAt: { not: null } }
+      : { endedAt: { not: null } };
+
     // Get user's workout count
     const userWorkoutCount = await prisma.workoutSession.count({
-      where: {
-        userId,
-        ...(startDate && {
-          startedAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-        }),
-      },
+      where: { userId, ...dateFilter },
     });
 
     // Calculate real position
     const totalUsersWithWorkouts = await prisma.user.count({
-      where: {
-        WorkoutSession: {
-          some: startDate
-            ? {
-                startedAt: {
-                  gte: startDate,
-                  lte: endDate,
-                },
-              }
-            : {},
-        },
-      },
+      where: { WorkoutSession: { some: dateFilter } },
     });
 
     // Get all users sorted by workout count to find exact position
     const allUsers = await prisma.user.findMany({
-      where: {
-        WorkoutSession: {
-          some: startDate
-            ? {
-                startedAt: {
-                  gte: startDate,
-                  lte: endDate,
-                },
-              }
-            : {},
-        },
-      },
+      where: { WorkoutSession: { some: dateFilter } },
       select: {
         id: true,
         _count: {
           select: {
-            WorkoutSession: startDate
-              ? {
-                  where: {
-                    startedAt: {
-                      gte: startDate,
-                      lte: endDate,
-                    },
-                  },
-                }
-              : true,
+            WorkoutSession: { where: dateFilter },
           },
         },
       },

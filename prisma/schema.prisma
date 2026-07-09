@@ -45,10 +45,11 @@ model User {
   // Onboarding preferences
   onboardingPreferences Json?
 
-  // Training programs
-  programEnrollments UserProgramEnrollment[]
+ // Training programs
+ programEnrollments UserProgramEnrollment[]
+  trainingPlan       UserTrainingPlan?
 
-  @@map("user")
+ @@map("user")
 }
 
 model UserFavoriteExercise {
@@ -301,6 +302,8 @@ model WorkoutSession {
   duration  Int? // en secondes
   exercises WorkoutSessionExercise[]
   muscles   ExerciseAttributeValueEnum[] @default([])
+
+  splitDay  Int? // 1-based: which day of the user's split (null = free mode)
 
   rating        Int? // 1-5 star rating
   ratingComment String? @db.Text // Optional comment for rating
@@ -731,4 +734,28 @@ enum ProgramVisibility {
   DRAFT
   PUBLISHED
   ARCHIVED
+}
+
+// ========================================
+// USER TRAINING PLAN (standalone, saveable)
+// ========================================
+
+model UserTrainingPlan {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  intent            String   // UserIntent: build_strength, lose_fat, etc.
+  daysPerWeek       Int      // 2-5
+  splitType         String   // fullbody, ppl, upperlower, ppl-ul
+
+  // Progress tracking
+  currentDay        Int      @default(1)  // next recommended day (1-based)
+  completedSessions Int      @default(0)
+
+  isActive          Boolean  @default(true) // always true (old plans deactivated on replace)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("user_training_plans")
 }

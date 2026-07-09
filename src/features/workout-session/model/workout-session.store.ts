@@ -5,6 +5,8 @@ import { WorkoutSession } from "@/shared/lib/workout-session/types/workout-sessi
 import { convertWeight, type WeightUnit } from "@/shared/lib/weight-conversion";
 import { WorkoutSessionExercise, WorkoutSet, WorkoutSetType, WorkoutSetUnit } from "@/features/workout-session/types/workout-set";
 import { useWorkoutBuilderStore } from "@/features/workout-builder/model/workout-builder.store";
+import { isBodyweightExercise } from "@/entities/exercise/shared/exercise-type";
+import type { QuickSetScheme } from "@/features/training-science/model/quick-session";
 import { ExerciseWithAttributes } from "@/entities/exercise/types/exercise.types";
 
 interface WorkoutSessionProgress {
@@ -32,7 +34,7 @@ interface WorkoutSessionState {
   progressPercent: number;
 
   // Actions
-  startWorkout: (exercises: ExerciseWithAttributes[] | WorkoutSessionExercise[], equipment: any[], muscles: any[]) => void;
+  startWorkout: (exercises: ExerciseWithAttributes[] | WorkoutSessionExercise[], equipment: any[], muscles: any[], splitDay?: number | null, setScheme?: QuickSetScheme | null) => void;
   quitWorkout: () => void;
   completeWorkout: () => void;
   toggleTimer: () => void;
@@ -52,6 +54,13 @@ interface WorkoutSessionState {
   getTotalVolumeInUnit: (unit: WeightUnit) => number;
   loadSessionFromLocal: () => void;
   addExerciseToSession: (exercise: ExerciseWithAttributes) => void;
+
+  /** Rest countdown between sets (seconds); 0 = inactive. */
+  restSeconds: number;
+  isRestActive: boolean;
+  startRest: (seconds: number) => void;
+  stopRest: () => void;
+  tickRest: () => void;
 }
 
 export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => ({
@@ -66,7 +75,21 @@ export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => 
   totalExercises: 0,
   progressPercent: 0,
 
-  startWorkout: (exercises, _equipment, muscles) => {
+  restSeconds: 0,
+  isRestActive: false,
+  startRest: (seconds) => set({ restSeconds: seconds, isRestActive: true }),
+  stopRest: () => set({ restSeconds: 0, isRestActive: false }),
+  tickRest: () => {
+    const { restSeconds, isRestActive } = get();
+    if (!isRestActive || restSeconds <= 0) return;
+    if (restSeconds <= 1) {
+      set({ restSeconds: 0, isRestActive: false });
+    } else {
+      set({ restSeconds: restSeconds - 1 });
+    }
+  },
+
+  startWorkout: (exercises, _equipment, muscles, splitDay, setScheme?) => {
     const sessionExercises: WorkoutSessionExercise[] = exercises.map((ex, idx) => {
       // Check if exercise already has sets (from program)
       if ("sets" in ex && ex.sets && ex.sets.length > 0) {
@@ -76,21 +99,23 @@ export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => 
         } as WorkoutSessionExercise;
       }
 
-      // Default sets for custom workouts
+      // Default sets: quick mode uses the engine's setScheme; custom workouts get 1 set.
       return {
         ...ex,
         order: idx,
-        sets: [
-          {
-            id: `${ex.id}-set-1`,
-            setIndex: 0,
-            types: ["REPS", "WEIGHT"],
-            valuesInt: [],
-            valuesSec: [],
-            units: [],
-            completed: false,
-          },
-        ],
+        sets: Array.from({ length: setScheme?.setsPerExercise ?? 1 }, (_, setIdx) => ({
+          id: `${ex.id}-set-${setIdx + 1}`,
+          setIndex: setIdx,
+         types: setScheme?.holdSeconds
+           ? ["TIME" as WorkoutSetType]
+           : isBodyweightExercise(ex)
+             ? ["REPS" as WorkoutSetType, "BODYWEIGHT" as WorkoutSetType]
+             : ["REPS" as WorkoutSetType, "WEIGHT" as WorkoutSetType],
+          valuesInt: setScheme?.holdSeconds ? [] : [setScheme?.targetReps ?? 12],
+          valuesSec: setScheme?.holdSeconds ? [setScheme.holdSeconds] : [],
+         units: [],
+          completed: false,
+        })) satisfies WorkoutSet[],
       } as WorkoutSessionExercise;
     });
 
@@ -101,6 +126,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => 
       exercises: sessionExercises,
       status: "active",
       muscles,
+      splitDay: splitDay ?? null,
     };
 
     workoutSessionLocal.add(newSession);
@@ -131,29 +157,31 @@ export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => 
     });
   },
 
-  completeWorkout: () => {
-    const { session } = get();
+ completeWorkout: () => {
+   const { session } = get();
 
-    if (session) {
-      workoutSessionLocal.update(session.id, { status: "completed", endedAt: new Date().toISOString() });
-      console.log({
-        session: { ...session, status: "completed", endedAt: new Date().toISOString() },
-        progress: {},
-        elapsedTime: 0,
-        isTimerRunning: false,
-        isWorkoutActive: false,
-      });
-      set({
-        session: { ...session, status: "completed", endedAt: new Date().toISOString() },
-        progress: {},
-        elapsedTime: 0,
-        isTimerRunning: false,
-        isWorkoutActive: false,
-      });
-    }
+   if (session) {
+     // Mark all incomplete sets as completed so analytics picks them up.
+     // Without this, sessions finished via "Finish Session" (without clicking
+     // each individual "Finish Set") are invisible to ACWR / volume charts.
+     const completedExercises = session.exercises.map((ex) => ({
+       ...ex,
+       sets: ex.sets.map((set) => ({ ...set, completed: true })),
+     }));
+     const completedSession = { ...session, exercises: completedExercises };
 
-    useWorkoutBuilderStore.getState().setStep(1);
-  },
+     workoutSessionLocal.update(session.id, { status: "completed", endedAt: new Date().toISOString(), exercises: completedExercises });
+     set({
+       session: { ...completedSession, status: "completed", endedAt: new Date().toISOString() },
+       progress: {},
+       elapsedTime: 0,
+       isTimerRunning: false,
+       isWorkoutActive: false,
+     });
+   }
+
+   useWorkoutBuilderStore.getState().setStep(1);
+ },
 
   toggleTimer: () => {
     set((state) => {
@@ -268,6 +296,9 @@ export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => 
   finishSet: (exerciseIndex, setIndex) => {
     get().updateSet(exerciseIndex, setIndex, { completed: true });
 
+    // Start rest timer after finishing a set.
+    get().startRest(30);
+
     // if has completed all sets, go to next exercise
     const { session } = get();
     if (!session) return;
@@ -346,9 +377,9 @@ export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => 
     session.exercises.forEach((exercise) => {
       exercise.sets.forEach((set) => {
         // Vérifier si le set est complété et contient REPS et WEIGHT
-        if (set.completed && set.types.includes("REPS") && set.types.includes("WEIGHT") && set.valuesInt) {
+        if (set.completed && set.types.includes("REPS") && (set.types.includes("WEIGHT") || set.types.includes("BODYWEIGHT")) && set.valuesInt) {
           const repsIndex = set.types.indexOf("REPS");
-          const weightIndex = set.types.indexOf("WEIGHT");
+          const weightIndex = set.types.indexOf("WEIGHT") !== -1 ? set.types.indexOf("WEIGHT") : set.types.indexOf("BODYWEIGHT");
 
           const reps = set.valuesInt[repsIndex] || 0;
           const weight = set.valuesInt[weightIndex] || 0;
@@ -376,9 +407,9 @@ export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => 
     session.exercises.forEach((exercise) => {
       exercise.sets.forEach((set) => {
         // Vérifier si le set est complété et contient REPS et WEIGHT
-        if (set.completed && set.types.includes("REPS") && set.types.includes("WEIGHT") && set.valuesInt) {
+        if (set.completed && set.types.includes("REPS") && (set.types.includes("WEIGHT") || set.types.includes("BODYWEIGHT")) && set.valuesInt) {
           const repsIndex = set.types.indexOf("REPS");
-          const weightIndex = set.types.indexOf("WEIGHT");
+          const weightIndex = set.types.indexOf("WEIGHT") !== -1 ? set.types.indexOf("WEIGHT") : set.types.indexOf("BODYWEIGHT");
 
           const reps = set.valuesInt[repsIndex] || 0;
           const weight = set.valuesInt[weightIndex] || 0;
@@ -440,7 +471,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionState>((set, get) => 
         {
           id: `${exercise.id}-set-1`,
           setIndex: 0,
-          types: ["REPS", "WEIGHT"],
+          types: isBodyweightExercise(exercise) ? ["REPS", "BODYWEIGHT"] : ["REPS", "WEIGHT"],
           valuesInt: [],
           valuesSec: [],
           units: [],

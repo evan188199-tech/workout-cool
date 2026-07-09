@@ -5,6 +5,7 @@ import { ExerciseAttributeNameEnum } from "@prisma/client";
 import { prisma } from "@/shared/lib/prisma";
 import { actionClient } from "@/shared/api/safe-actions";
 import { selectExercises } from "@/features/training-science/model/exercise-selection";
+import type { ExerciseWithAttributes } from "@/entities/exercise/types/exercise.types";
 
 import { getExercisesSchema } from "../schema/get-exercises.schema";
 
@@ -110,8 +111,8 @@ export const getExercisesAction = actionClient.schema(getExercisesSchema).action
           allExercises = [...allExercises, ...secondaryExercises];
         }
 
-        // Step 3: Structured selection (compound-first) replaces the old pure-random shuffle.
-        const finalExercises = selectExercises(allExercises, limit);
+       // Step 3: Structured selection (compound-first) replaces the old pure-random shuffle.
+        const finalExercises = selectExercises(allExercises as ExerciseWithAttributes[], limit);
 
         return { muscle, exercises: finalExercises };
       }),

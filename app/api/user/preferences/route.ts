@@ -15,6 +15,14 @@ const preferencesSchema = z.object({
   notificationTime: z.string().optional(),
 });
 
+// bodyWeight is optional and can be set independently of the rest.
+const bodyWeightSchema = z.object({
+  bodyWeight: z.number().min(1).max(500).optional(),
+  bodyWeightUnit: z.enum(["kg", "lbs"]).optional(),
+});
+
+const patchSchema = preferencesSchema.merge(bodyWeightSchema).partial();
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getMobileCompatibleSession(req);
@@ -46,15 +54,26 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const parsed = preferencesSchema.safeParse(body);
+    const parsed = patchSchema.safeParse(body);
 
     if (!parsed.success) {
       return NextResponse.json({ error: "INVALID_INPUT", details: parsed.error.format() }, { status: 400 });
     }
 
+    // bodyWeight is merged into onboardingPreferences without clobbering the rest.
+    const { bodyWeight: _bw, bodyWeightUnit: _bwu, ...rest } = parsed.data;
+    const existing = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { onboardingPreferences: true },
+    });
+    const prev = (existing?.onboardingPreferences as Record<string, unknown>) ?? {};
+    const next: Record<string, unknown> = { ...rest, ...prev };
+    if (parsed.data.bodyWeight !== undefined) next.bodyWeight = parsed.data.bodyWeight;
+    if (parsed.data.bodyWeightUnit !== undefined) next.bodyWeightUnit = parsed.data.bodyWeightUnit;
+
     await prisma.user.update({
       where: { id: session.user.id },
-      data: { onboardingPreferences: parsed.data },
+      data: { onboardingPreferences: next },
     });
 
     return NextResponse.json({ success: true });

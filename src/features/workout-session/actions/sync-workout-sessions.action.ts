@@ -15,7 +15,11 @@ const workoutSetSchema = z.object({
   types: z.array(z.enum(ALL_WORKOUT_SET_TYPES)),
   valuesInt: z.array(z.number()).optional(),
   valuesSec: z.array(z.number()).optional(),
-  units: z.array(z.enum(WORKOUT_SET_UNITS_TUPLE)).optional(),
+  // Accept null/undefined holes in units array (from sparse JS arrays) and
+  // normalize to "kg" so sync never fails on bodyweight auto-fill.
+  units: z
+    .array(z.union([z.enum(WORKOUT_SET_UNITS_TUPLE), z.null(), z.undefined()]).transform((v) => (v === "lbs" ? "lbs" : "kg")))
+    .optional(),
   completed: z.boolean(),
 });
 
@@ -34,9 +38,10 @@ const syncWorkoutSessionSchema = z.object({
     exercises: z.array(workoutSessionExerciseSchema),
     status: z.enum(workoutSessionStatuses),
     muscles: z.array(z.nativeEnum(ExerciseAttributeValueEnum)),
-    rating: z.number().min(1).max(5).nullable().optional(),
-    ratingComment: z.string().nullable().optional(),
-  }),
+   rating: z.number().min(1).max(5).nullable().optional(),
+   ratingComment: z.string().nullable().optional(),
+    splitDay: z.number().int().min(1).nullable().optional(),
+ }),
 });
 
 export const syncWorkoutSessionAction = actionClient.schema(syncWorkoutSessionSchema).action(async ({ parsedInput }) => {

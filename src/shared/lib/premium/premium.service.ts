@@ -35,7 +35,9 @@ export class PremiumService {
       // },
     });
 
-    if (!user || !user.isPremium) {
+    // Self-hosted policy: every registered user is premium (VIP, no ads, all
+    // premium features unlocked). Only unknown / unauthenticated users are not.
+    if (!user) {
       return { isPremium: false };
     }
 

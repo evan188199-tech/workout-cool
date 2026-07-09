@@ -22,17 +22,13 @@ export const getTopWorkoutUsersAction = actionClient.schema(inputSchema).action(
   try {
     const { startDate, endDate } = getDateRangeForPeriod(period);
 
+    // Only count completed sessions (endedAt is set).
+    const dateFilter = startDate
+      ? { startedAt: { gte: startDate, lte: endDate }, endedAt: { not: null } }
+      : { endedAt: { not: null } };
+
     const whereClause = {
-      WorkoutSession: {
-        some: startDate
-          ? {
-              startedAt: {
-                gte: startDate,
-                lte: endDate,
-              },
-            }
-          : {},
-      },
+      WorkoutSession: { some: dateFilter },
     };
 
     const topUsers = await prisma.user.findMany({
@@ -45,27 +41,11 @@ export const getTopWorkoutUsersAction = actionClient.schema(inputSchema).action(
         createdAt: true,
         _count: {
           select: {
-            WorkoutSession: startDate
-              ? {
-                  where: {
-                    startedAt: {
-                      gte: startDate,
-                      lte: endDate,
-                    },
-                  },
-                }
-              : true,
+            WorkoutSession: { where: dateFilter },
           },
         },
         WorkoutSession: {
-          where: startDate
-            ? {
-                startedAt: {
-                  gte: startDate,
-                  lte: endDate,
-                },
-              }
-            : undefined,
+          where: dateFilter,
           select: {
             endedAt: true,
             startedAt: true,
@@ -90,8 +70,8 @@ export const getTopWorkoutUsersAction = actionClient.schema(inputSchema).action(
         const lastWorkout = user.WorkoutSession[0];
         const lastWorkoutAt = lastWorkout?.endedAt || lastWorkout?.startedAt || null;
 
-        const startDate = user.createdAt;
-        const weeksSinceStart = Math.max(1, Math.ceil(dayjs().diff(dayjs(startDate), "week", true)));
+        const userCreatedAt = user.createdAt;
+        const weeksSinceStart = Math.max(1, Math.ceil(dayjs().diff(dayjs(userCreatedAt), "week", true)));
 
         const averageWorkoutsPerWeek = Math.round((totalWorkouts / weeksSinceStart) * 10) / 10;
 

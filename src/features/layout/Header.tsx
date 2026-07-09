@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { LogIn, UserPlus, LogOut, User, Crown, Sparkles } from "lucide-react";
+import { LogIn, UserPlus, LogOut, User, Crown, Sparkles, ClipboardList } from "lucide-react";
 
 import { useI18n } from "locales/client";
 import Logo from "@public/logo.png";
@@ -91,10 +91,16 @@ export const Header = () => {
               onClick={handleCloseDropdown}
               tabIndex={0}
             >
+             <li>
+               <Link className="!no-underline" href="/profile" size="base" variant="nav">
+                 <User className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+                 {t("commons.profile")}
+               </Link>
+             </li>
               <li>
-                <Link className="!no-underline" href="/profile" size="base" variant="nav">
-                  <User className="w-4 h-4 text-gray-700 dark:text-gray-300" />
-                  {t("commons.profile")}
+                <Link className="!no-underline" href="/plan" size="base" variant="nav">
+                  <ClipboardList className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+                  My Plan
                 </Link>
               </li>
 

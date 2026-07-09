@@ -16,7 +16,6 @@ import { FavoriteExercisesSynchronizer } from "@/features/workout-builder/model/
 import { ThemeSynchronizer } from "@/features/theme/ui/ThemeSynchronizer";
 import { env } from "@/env";
 import { Version } from "@/components/version";
-import { TailwindIndicator } from "@/components/utils/TailwindIndicator";
 import { NextTopLoader } from "@/components/ui/next-top-loader";
 import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration";
 import { VerticalLeftBanner, VerticalRightBanner, AdBlockerForPremium } from "@/components/ads";
@@ -246,7 +245,8 @@ export default async function RootLayout({ params, children }: RootLayoutProps) 
         <head>
           <meta charSet="UTF-8" />
           <meta content="width=device-width, initial-scale=1, maximum-scale=1 viewport-fit=cover" name="viewport" />
-          {/* {env.NEXT_PUBLIC_AD_PROVIDER !== "custom" && ( */}
+         {/* {env.NEXT_PUBLIC_AD_PROVIDER !== "custom" && ( */}
+        {env.NEXT_PUBLIC_AD_CLIENT && (
           <>
             <meta content={env.NEXT_PUBLIC_AD_CLIENT} name="google-adsense-account" />
 
@@ -255,30 +255,34 @@ export default async function RootLayout({ params, children }: RootLayoutProps) 
               crossOrigin="anonymous"
               src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${env.NEXT_PUBLIC_AD_CLIENT}`}
             />
-
-            {/* Ezoic Header Script */}
-            <script async src="//www.ezojs.com/ezoic/sa.min.js" />
-            <script
-              dangerouslySetInnerHTML={{
-                __html: `
-                    window.ezstandalone = window.ezstandalone || {};
-                    ezstandalone.cmd = ezstandalone.cmd || [];
-                    ezstandalone.cmd.push(function() {
-                      ezstandalone.enable();
-                      ezstandalone.initRewardedAds({
-                        anchor: true,
-                        interstitial: true,
-                        video: true,
-                        sideRails: true
-                      });
-                    });
-                    window.ezRewardedAds = window.ezRewardedAds || {};
-                    window.ezRewardedAds.cmd = window.ezRewardedAds.cmd || [];
-                  `,
-              }}
-            />
           </>
-          {/* )} */}
+        )}
+
+          {/* Ezoic Header Script */}
+          {env.NEXT_PUBLIC_AD_PROVIDER === "ezoic" && (
+            <>
+              <script async src="//www.ezojs.com/ezoic/sa.min.js" />
+              <script
+                dangerouslySetInnerHTML={{
+                  __html: `
+                        window.ezstandalone = window.ezstandalone || {};
+                        ezstandalone.cmd = ezstandalone.cmd || [];
+                        ezstandalone.cmd.push(function() {
+                          ezstandalone.enable();
+                          ezstandalone.initRewardedAds({
+                            anchor: true,
+                            interstitial: true,
+                            video: true,
+                            sideRails: true
+                          });
+                        });
+                        window.ezRewardedAds = window.ezRewardedAds || {};
+                        window.ezRewardedAds.cmd = window.ezRewardedAds.cmd || [];
+                      `,
+                }}
+              />
+            </>
+          )}
 
           {/* PWA Meta Tags */}
           <meta content="yes" name="apple-mobile-web-app-capable" />
@@ -362,7 +366,6 @@ export default async function RootLayout({ params, children }: RootLayoutProps) 
             </div>
             <Version />
 
-            <TailwindIndicator />
           </Providers>
         </body>
       </html>

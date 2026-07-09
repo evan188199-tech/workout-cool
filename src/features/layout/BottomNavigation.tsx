@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Dumbbell, Grid, Hammer, Crown, Activity, Trophy } from "lucide-react";
+import { ClipboardList } from "lucide-react";
 import { useCurrentLocale, useI18n } from "locales/client";
 
 import { cn } from "@/shared/lib/utils";
@@ -25,16 +26,27 @@ export function BottomNavigation() {
       description: t("bottom_navigation.workouts_tooltip"),
       isActive: pathname === paths.root || pathname === `/${locale}`,
     },
+   {
+     id: "programs",
+     label: t("bottom_navigation.programs"),
+     shortLabel: t("bottom_navigation.programs"),
+     mobileLabel: t("bottom_navigation.programs"),
+     href: `${paths.programs}`,
+     icon: Grid,
+     emoji: "WorkoutCoolSwag.png",
+     description: t("bottom_navigation.programs_tooltip"),
+     isActive: pathname.includes(paths.programs),
+   },
     {
-      id: "programs",
-      label: t("bottom_navigation.programs"),
-      shortLabel: t("bottom_navigation.programs"),
-      mobileLabel: t("bottom_navigation.programs"),
-      href: `${paths.programs}`,
-      icon: Grid,
+      id: "plan",
+      label: "Plan",
+      shortLabel: "Plan",
+      mobileLabel: "Plan",
+      href: `/${locale}${paths.plan}`,
+      icon: ClipboardList,
       emoji: "WorkoutCoolSwag.png",
-      description: t("bottom_navigation.programs_tooltip"),
-      isActive: pathname.includes(paths.programs),
+      description: "Your personal training plan",
+      isActive: pathname.includes(paths.plan),
     },
     {
       id: "statistics",

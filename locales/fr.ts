@@ -1409,6 +1409,7 @@ export default {
 
   profile: {
     new_workout: "Nouvelle séance",
+    body_weight: "Poids du corps",
     alert: {
       title: "Votre progression est stockée dans votre navigateur.",
       create_account: "Créer un compte",
@@ -1536,9 +1537,30 @@ export default {
     threads: "Threads",
   },
 
-  // Workout Builder
-  workout_builder: {
-    confirm_delete: "Êtes-vous sûr de vouloir supprimer cette séance ?",
+ // Workout Builder
+ workout_builder: {
+   confirm_delete: "Êtes-vous sûr de vouloir supprimer cette séance ?",
+   quick: {
+     title: "Séance rapide",
+     subtitle: "Un mini-circuit au poids du corps qui évite les muscles prévus aujourd'hui",
+     time_label: "Combien de temps avez-vous ?",
+     hint: "Parfait pour une pause mouvement au travail ou en jour de repos.",
+     generate: "Générer la séance rapide",
+     generating: "Génération...",
+   },
+   weekly_adjustment: {
+     title: "Recommandation pour la semaine prochaine",
+     apply: "Appliquer",
+     applied: "Appliqué",
+     days_per_week: "jours/semaine",
+   },
+   plan_session: {
+     title: "Séance plan rapide",
+     subtitle: "L'entraînement complet du jour en un clic — fait avancer votre plan",
+      hint: "Sélectionnez votre équipement ci-dessous, puis générez instantanément.",
+     generate: "Démarrer l'entraînement du jour",
+     generating: "Génération...",
+   },
     steps: {
       equipment: {
         title: "Équipement",
@@ -1622,6 +1644,8 @@ export default {
         description: "Exercices sur banc et support",
       },
     },
+    show_more: "Afficher plus",
+    show_less: "Afficher moins",
     navigation: {
       previous: "Précédent",
       continue: "Continuer",
@@ -1655,8 +1679,14 @@ export default {
       congrats_subtitle: "Tu l'as fait !",
       see_instructions: "Voir les instructions",
       finish_set: "Valider la série",
-      finish_session: "Terminer la séance",
-      bodyweight: "Poids du corps",
+     finish_session: "Terminer la séance",
+      warmup_title: "Étirements d'échauffement",
+      warmup_subtitle: "Étirements dynamiques pour activer vos muscles avant l'entraînement. Touchez pour marquer comme fait.",
+      cooldown_title: "Étirements de récupération",
+      cooldown_subtitle: "Étirements statiques pour détendre vos muscles et favoriser la récupération. Maintenez chaque position pendant la durée indiquée.",
+      stretch_reps: "rép. par côté",
+      stretch_hold: "secondes par côté",
+     bodyweight: "Poids du corps",
       weight: "Poids",
       reps: "Répétitions",
       time: "Temps",
@@ -1944,6 +1974,11 @@ export default {
     // Premium
     premium_required: "Premium requis pour accéder aux statistiques",
 
+    total_workouts: "Total Séances",
+    total_volume: "Volume Total",
+    total_sets: "Total Séries",
+    total_time: "Temps Total",
+    top_exercises: "Top Exercices",
     // StatisticsPreviewOverlay
     premium_statistics: "Statistiques Premium",
     premium_statistics_description:

@@ -135,7 +135,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         let volume = 0;
 
         // Calculate volume based on set type
-        const weightIndex = set.types.indexOf("WEIGHT");
+        const weightIndex = set.types.indexOf("WEIGHT") !== -1 ? set.types.indexOf("WEIGHT") : set.types.indexOf("BODYWEIGHT");
         const repsIndex = set.types.indexOf("REPS");
         const timeIndex = set.types.indexOf("TIME");
 

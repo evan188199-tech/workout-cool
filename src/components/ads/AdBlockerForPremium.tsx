@@ -1,13 +1,19 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Script from "next/script";
 
 import { useUserSubscription } from "@/features/ads/hooks/useUserSubscription";
 
 export function AdBlockerForPremium() {
   const { isPremium, isPending } = useUserSubscription();
+  // Gate behind mount to avoid SSR/hydration mismatch — useSession() resolves
+  // differently after hydration, which would cause a <Script> to appear or
+  // disappear between server render and client hydration.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
-  if (isPending || !isPremium) {
+  if (!mounted || isPending || !isPremium) {
     return null;
   }
 

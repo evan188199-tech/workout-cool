@@ -515,6 +515,7 @@ export default {
 
   profile: {
     new_workout: "Nuevo entrenamiento",
+    body_weight: "Peso corporal",
     alert: {
       title: "Tu progreso está almacenado en tu navegador.",
       create_account: "Crear una cuenta",
@@ -727,6 +728,8 @@ export default {
         description: "Ejercicios en banco y soporte",
       },
     },
+    show_more: "Mostrar más",
+    show_less: "Mostrar menos",
     navigation: {
       previous: "Anterior",
       continue: "Continuar",
@@ -760,8 +763,14 @@ export default {
       congrats_subtitle: "¡Lo has logrado!",
       see_instructions: "Ver instrucciones",
       finish_set: "Terminar serie",
-      finish_session: "Terminar sesión",
-      bodyweight: "Peso corporal",
+     finish_session: "Terminar sesión",
+      warmup_title: "Estiramientos de calentamiento",
+      warmup_subtitle: "Estiramientos dinámicos para activar tus músculos antes del entrenamiento. Toca para marcar como hecho.",
+      cooldown_title: "Estiramientos de enfriamiento",
+      cooldown_subtitle: "Estiramientos estáticos para relajar tus músculos y favorecer la recuperación. Mantén cada uno por la duración indicada.",
+      stretch_reps: "rep. por lado",
+      stretch_hold: "segundos por lado",
+     bodyweight: "Peso corporal",
       weight: "Peso",
       reps: "Repeticiones",
       time: "Tiempo",
@@ -1921,6 +1930,11 @@ export default {
     // Premium
     premium_required: "Se requiere Premium para acceder a las estadísticas",
 
+    total_workouts: "Total Entrenamientos",
+    total_volume: "Volumen Total",
+    total_sets: "Total Series",
+    total_time: "Tiempo Total",
+    top_exercises: "Top Ejercicios",
     // StatisticsPreviewOverlay
     premium_statistics: "Estadísticas Premium",
     premium_statistics_description: "Obtén información detallada sobre tu viaje fitness con análisis avanzados para cada ejercicio.",

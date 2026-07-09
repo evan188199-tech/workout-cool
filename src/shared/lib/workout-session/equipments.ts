@@ -19,6 +19,7 @@ export const getEquipmentTranslation = (value: ExerciseAttributeValueEnum, t: TF
     [ExerciseAttributeValueEnum.WEIGHT_PLATE]: "plate",
     [ExerciseAttributeValueEnum.PULLUP_BAR]: "pullup_bar",
     [ExerciseAttributeValueEnum.BENCH]: "bench",
+    [ExerciseAttributeValueEnum.SWISS_BALL]: "swiss_ball",
   };
 
   const key = equipmentKeys[value];

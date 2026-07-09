@@ -1,17 +1,11 @@
 "use server";
 
 import { ExerciseAttributeNameEnum } from "@prisma/client";
-import { z } from "zod";
 
 import { prisma } from "@/shared/lib/prisma";
 import { convertWeight } from "@/shared/lib/weight-conversion";
 
 import { SetEntry } from "../model/types";
-
-const schema = z.object({
-  sinceDays: z.number().int().positive().default(120),
-  exerciseId: z.string().optional(),
-});
 
 // Shared query: flatten the user's completed sets into the SetEntry[] the pure
 // model functions expect. Used by all three analytics actions to avoid duplication.
@@ -78,5 +72,3 @@ export async function loadUserSetEntries(
 
   return entries;
 }
-
-export const loadSetEntriesSchema = schema;

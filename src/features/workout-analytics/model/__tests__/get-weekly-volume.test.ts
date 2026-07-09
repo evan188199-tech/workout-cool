@@ -24,16 +24,16 @@ function chestSets(count: number, daysAgo: number): SetEntry[] {
 }
 
 describe("getWeeklyMuscleVolume", () => {
-  it("12 sets this week -> optimal", () => {
-    const res = getWeeklyMuscleVolume({ sets: chestSets(12, 1) });
+ it("12 sets this week -> optimal", () => {
+    const res = getWeeklyMuscleVolume({ sets: chestSets(12, 0) });
     const chest = res.find((m) => m.muscleLabel === "胸");
     expect(chest).toBeDefined();
     expect(chest!.weeklySets).toBe(12);
     expect(chest!.status).toBe("optimal");
   });
 
-  it("26 sets this week -> overreach", () => {
-    const res = getWeeklyMuscleVolume({ sets: chestSets(26, 1) });
+ it("26 sets this week -> overreach", () => {
+    const res = getWeeklyMuscleVolume({ sets: chestSets(26, 0) });
     const chest = res.find((m) => m.muscleLabel === "胸");
     expect(chest!.status).toBe("overreach");
   });

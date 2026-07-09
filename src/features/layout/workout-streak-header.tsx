@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import dayjs from "dayjs";
@@ -59,6 +59,14 @@ export interface StreakData {
 export default function WorkoutStreakHeader({ className, streakCount = DEFAULT_STREAK_COUNT }: WorkoutStreakHeaderProps) {
   const { data: sessions, isLoading: sessionsLoading, error: sessionsError } = useWorkoutSessions();
   const locale = useCurrentLocale();
+
+  // Don't compute timezone/time-dependent data during SSR or the first client
+  // render. dayjs.tz.guess() and dayjs() produce different values on the server
+  // (Node/UTC) vs the client (browser timezone), which causes a hydration
+  // mismatch on the rendered aria-label / title / data-tip attributes.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   // Get user's timezone for accurate date calculations (memoized for performance)
   const userTimezone = useMemo(() => {
     try {
@@ -155,14 +163,15 @@ export default function WorkoutStreakHeader({ className, streakCount = DEFAULT_S
     };
   }, [recentSessions, streakCount, userTimezone]);
 
-  // Handle loading state
-  if (sessionsLoading) {
+  // Stable placeholder during SSR and initial hydration to avoid mismatches,
+  // then during react-query loading on the client.
+  if (!mounted || sessionsLoading) {
     return (
       <div aria-label="Loading workout streak" className={`flex gap-1 ${className}`} role="status">
         {[...Array(streakCount)].map((_, i) => (
           <div
             aria-hidden="true"
-            className="w-4 h-4 sm:w-6 sm:h-6 rounded-sm sm:rounded-md bg-base-300 animate-pulse transition-colors duration-200"
+            className="w-4 h-4 sm:w-6 sm:h-6 rounded-sm sm:rounded-md bg-base-300/60 transition-colors duration-200"
             key={i}
           />
         ))}
