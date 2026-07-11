@@ -21,6 +21,34 @@ function getWeekStart(date: Date): string {
   return `${year}-${month}-${day2}`;
 }
 
+function getSetVolume(set: { types: unknown; valuesInt: unknown; valuesSec: unknown }): number {
+  const types = set.types as string[];
+  const valuesInt = set.valuesInt ?? [];
+  const valuesSec = set.valuesSec ?? [];
+
+  const repsIndex = types.indexOf("REPS");
+  const reps = repsIndex !== -1 ? valuesInt[repsIndex] || 0 : 0;
+  const weightIndex =
+    types.indexOf("WEIGHT") !== -1 ? types.indexOf("WEIGHT") : types.indexOf("BODYWEIGHT");
+
+  const timeIndex = types.indexOf("TIME");
+  const time = timeIndex !== -1 ? valuesSec[timeIndex] || 0 : 0;
+
+  if (reps > 0 && weightIndex !== -1) {
+    return reps * (valuesInt[weightIndex] || 0);
+  }
+
+  if (reps > 0) {
+    return reps;
+  }
+
+  if (time > 0) {
+    return time;
+  }
+
+  return 0;
+}
+
 export const getOverallStatsAction = actionClient.schema(getOverallStatsSchema).action(async ({ parsedInput }) => {
   try {
     const { userId } = parsedInput;
@@ -113,26 +141,25 @@ export const getOverallStatsAction = actionClient.schema(getOverallStatsSchema).
       for (const ex of session.exercises) {
         for (const set of ex.sets) {
           if (!set.completed) continue;
+          const volume = getSetVolume(set);
+
           const types = set.types as string[];
           const valuesInt = set.valuesInt ?? [];
           const repsIndex = types.indexOf("REPS");
-          const weightIndex = types.indexOf("WEIGHT") !== -1 ? types.indexOf("WEIGHT") : types.indexOf("BODYWEIGHT");
+          const timeIndex = types.indexOf("TIME");
           const reps = repsIndex !== -1 ? valuesInt[repsIndex] || 0 : 0;
+          const time = timeIndex !== -1 ? (set.valuesSec?.[timeIndex] || 0) : 0;
 
-          let volume = 0;
-          if (reps > 0 && weightIndex !== -1) {
-            volume = reps * (valuesInt[weightIndex] || 0);
-          } else if (reps > 0) {
-            volume = reps;
+          if (reps <= 0 && time <= 0) {
+            continue;
           }
 
-          if (volume > 0) {
-            const entry = weeklyVolume.get(weekKey) || { weekStart: weekKey, totalVolume: 0, setCount: 0, workoutCount: new Set<string>() };
-            entry.totalVolume += volume;
-            entry.setCount++;
-            entry.workoutCount.add(session.id);
-            weeklyVolume.set(weekKey, entry);
-          }
+          const entry =
+            weeklyVolume.get(weekKey) || { weekStart: weekKey, totalVolume: 0, setCount: 0, workoutCount: new Set<string>() };
+          entry.totalVolume += volume;
+          entry.setCount++;
+          entry.workoutCount.add(session.id);
+          weeklyVolume.set(weekKey, entry);
         }
       }
     }

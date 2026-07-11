@@ -32,6 +32,51 @@ function getWeekStartDate(date: Date): Date {
   return new Date(tempDate.setDate(diff));
 }
 
+function getSetVolume(set: {
+  types: string[]
+  valuesInt: number[]
+  valuesSec: number[]
+}): number {
+  const repsIndex = set.types.indexOf("REPS");
+  const reps = repsIndex !== -1 ? set.valuesInt[repsIndex] || 0 : 0;
+  const weightIndex = set.types.indexOf("WEIGHT") !== -1 ? set.types.indexOf("WEIGHT") : set.types.indexOf("BODYWEIGHT");
+  const timeIndex = set.types.indexOf("TIME");
+  const time = timeIndex !== -1 ? set.valuesSec[timeIndex] || 0 : 0;
+
+  if (reps > 0 && weightIndex !== -1) {
+    return reps * (set.valuesInt[weightIndex] || 0);
+  }
+
+  if (reps > 0) {
+    return reps;
+  }
+
+  if (time > 0) {
+    return time;
+  }
+
+  return 0;
+}
+
+function buildWeekBuckets(
+  startDate: Date,
+  endDate: Date,
+): Map<string, { weekStart: Date; totalVolume: number; setCount: number }> {
+  const buckets = new Map<string, { weekStart: Date; totalVolume: number; setCount: number }>();
+  const cursor = new Date(startDate);
+  cursor.setHours(0, 0, 0, 0);
+
+  while (cursor.getTime() <= endDate.getTime()) {
+    const weekKey = getWeekNumber(cursor);
+    if (!buckets.has(weekKey)) {
+      buckets.set(weekKey, { weekStart: getWeekStartDate(cursor), totalVolume: 0, setCount: 0 });
+    }
+    cursor.setDate(cursor.getDate() + 7);
+  }
+
+  return buckets;
+}
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ exerciseId: string }> }) {
   try {
     // Get user session
@@ -125,39 +170,34 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     });
 
     // Calculate weekly volume
-    const weeklyVolume = new Map<string, { weekStart: Date; totalVolume: number; setCount: number }>();
+    const weeklyVolume = buildWeekBuckets(startDate, endDate);
 
     workoutSessionExercises.forEach((sessionExercise) => {
       const weekKey = getWeekNumber(sessionExercise.workoutSession.startedAt);
       const weekStart = getWeekStartDate(sessionExercise.workoutSession.startedAt);
 
       sessionExercise.sets.forEach((set) => {
-        let volume = 0;
-
-        // Calculate volume based on set type
-        const weightIndex = set.types.indexOf("WEIGHT") !== -1 ? set.types.indexOf("WEIGHT") : set.types.indexOf("BODYWEIGHT");
         const repsIndex = set.types.indexOf("REPS");
         const timeIndex = set.types.indexOf("TIME");
+        const reps = repsIndex !== -1 ? set.valuesInt[repsIndex] || 0 : 0;
+        const time = timeIndex !== -1 ? set.valuesSec[timeIndex] || 0 : 0;
 
-        if (weightIndex !== -1 && repsIndex !== -1 && set.valuesInt && set.valuesInt[weightIndex] && set.valuesInt[repsIndex]) {
-          // Weight-based exercise: reps × weight
-          volume = set.valuesInt[repsIndex] * set.valuesInt[weightIndex];
-        } else if (repsIndex !== -1 && set.valuesInt && set.valuesInt[repsIndex]) {
-          // Bodyweight exercise: count reps as volume
-          volume = set.valuesInt[repsIndex];
-        } else if (timeIndex !== -1 && set.valuesSec && set.valuesSec[0]) {
-          // Time-based exercise: use seconds as volume
-          volume = set.valuesSec[0];
+        if (reps <= 0 && time <= 0) {
+          return;
         }
 
-        if (volume > 0) {
-          const currentWeek = weeklyVolume.get(weekKey) || { weekStart, totalVolume: 0, setCount: 0 };
-          weeklyVolume.set(weekKey, {
-            weekStart,
-            totalVolume: currentWeek.totalVolume + volume,
-            setCount: currentWeek.setCount + 1,
-          });
-        }
+        const volume = getSetVolume({
+          types: set.types,
+          valuesInt: set.valuesInt,
+          valuesSec: set.valuesSec,
+        });
+
+        const currentWeek = weeklyVolume.get(weekKey) || { weekStart, totalVolume: 0, setCount: 0 };
+        weeklyVolume.set(weekKey, {
+          weekStart,
+          totalVolume: currentWeek.totalVolume + volume,
+          setCount: currentWeek.setCount + 1,
+        });
       });
     });
 

@@ -1,6 +1,6 @@
 "use server";
 
-import { ExerciseAttributeNameEnum } from "@prisma/client";
+import { ExerciseAttributeNameEnum, ExerciseAttributeValueEnum } from "@prisma/client";
 
 import { prisma } from "@/shared/lib/prisma";
 import { actionClient } from "@/shared/api/safe-actions";
@@ -11,6 +11,7 @@ import {
   resolveAllowedEquipment,
 } from "@/shared/lib/user-preferences";
 import type { ExerciseWithAttributes } from "@/entities/exercise/types/exercise.types";
+import { NON_BODYWEIGHT_EQUIPMENT_VALUES } from "@/entities/exercise/shared/exercise-type";
 
 import { getExercisesSchema } from "../schema/get-exercises.schema";
 
@@ -59,6 +60,9 @@ export const getExercisesAction = actionClient.schema(getExercisesSchema).action
                   },
                 },
               },
+              ...(allowedEquipment.includes(ExerciseAttributeValueEnum.BODY_ONLY)
+                ? [{ NOT: { attributes: { some: { attributeValue: { value: { in: NON_BODYWEIGHT_EQUIPMENT_VALUES } } } } } }]
+                : []),
             ]
           : [];
 

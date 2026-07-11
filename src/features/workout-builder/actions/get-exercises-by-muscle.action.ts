@@ -5,6 +5,7 @@ import { ExerciseAttributeNameEnum, ExerciseAttributeValueEnum } from "@prisma/c
 
 import { prisma } from "@/shared/lib/prisma";
 import { actionClient } from "@/shared/api/safe-actions";
+import { NON_BODYWEIGHT_EQUIPMENT_VALUES } from "@/entities/exercise/shared/exercise-type";
 
 
 const getExercisesByMuscleSchema = z.object({
@@ -61,6 +62,9 @@ export const getExercisesByMuscleAction = actionClient
                     },
                   },
                 },
+                ...(equipment.includes(ExerciseAttributeValueEnum.BODY_ONLY)
+                  ? [{ NOT: { attributes: { some: { attributeValue: { value: { in: NON_BODYWEIGHT_EQUIPMENT_VALUES } } } } } }]
+                  : []),
                 {
                   attributes: {
                     some: {

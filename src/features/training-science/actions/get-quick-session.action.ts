@@ -4,6 +4,7 @@ import { z } from "zod";
 import { ExerciseAttributeNameEnum, ExerciseAttributeValueEnum } from "@prisma/client";
 
 import type { ExerciseWithAttributes } from "@/entities/exercise/types/exercise.types";
+import { NON_BODYWEIGHT_EQUIPMENT_VALUES } from "@/entities/exercise/shared/exercise-type";
 
 import { prisma } from "@/shared/lib/prisma";
 import { authenticatedActionClient } from "@/shared/api/safe-actions";
@@ -92,6 +93,9 @@ export const getQuickSessionAction = authenticatedActionClient
           },
         }
       : {};
+    const pureBodyweightFilter = allowedEquipment.includes(ExerciseAttributeValueEnum.BODY_ONLY)
+      ? { NOT: { attributes: { some: { attributeValue: { value: { in: NON_BODYWEIGHT_EQUIPMENT_VALUES } } } } } }
+      : {};
     const environmentFilter = officeFilterEnabled
       ? [{ slugEn: { in: OFFICE_WHITELIST_SLUGS } }]
       : [];
@@ -116,6 +120,7 @@ export const getQuickSessionAction = authenticatedActionClient
               },
             },
             ...(allowedEquipment.length > 0 ? [equipmentFilter] : []),
+            pureBodyweightFilter,
           ],
         },
         include: { attributes: { include: { attributeName: true, attributeValue: true } } },
@@ -138,6 +143,7 @@ export const getQuickSessionAction = authenticatedActionClient
                 },
               },
               ...(allowedEquipment.length > 0 ? [equipmentFilter] : []),
+              pureBodyweightFilter,
               { id: { notIn: Array.from(existingIds) } },
             ],
           },
