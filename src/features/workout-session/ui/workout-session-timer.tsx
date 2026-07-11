@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Clock3, Minus, Pause, Play, Plus, RotateCcw } from "lucide-react";
 
 import { cn } from "@/shared/lib/utils";
@@ -30,7 +30,6 @@ export function WorkoutSessionTimer() {
   const [targetDurationSeconds, setTargetDurationSeconds] = useState<number | null>(
     sessionPrescription?.targetDurationSeconds ?? null,
   );
-  const pendingTargetDurationRef = useRef<number | null>(null);
   const initialTargetDurationRef = useRef<number | null>(null);
   const activeSessionIdRef = useRef<string | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -118,74 +117,9 @@ export function WorkoutSessionTimer() {
           bar: "bg-emerald-500",
           pulse: "",
         };
-
-  const recommendedTargetOptions = useMemo(() => {
-    if (!effectiveTargetSeconds) {
-      return [] as { seconds: number; label: string; isRecommended: boolean }[];
-    }
-
-    const recommendedMinutes = Math.max(5, Math.round((recommendedTargetSeconds ?? effectiveTargetSeconds) / 60));
-    const currentMinutes = Math.max(5, Math.round(effectiveTargetSeconds / 60));
-    const candidateSet = new Set(
-      [
-        recommendedMinutes - 15,
-        recommendedMinutes - 10,
-        recommendedMinutes - 5,
-        recommendedMinutes,
-        Math.max(currentMinutes, recommendedMinutes + 5),
-        recommendedMinutes + 10,
-        recommendedMinutes + 15,
-        currentMinutes + 5,
-        currentMinutes + 10,
-      ].map((minutes) => minutes * 60),
-    );
-
-    return Array.from(candidateSet)
-      .filter((seconds) => seconds >= 5 * 60 && seconds <= 120 * 60)
-      .sort((a, b) => a - b)
-      .map((seconds) => ({
-        seconds,
-        label: `${Math.round(seconds / 60)}${t("workout_builder.session.time_unit_min")}`,
-        isRecommended: seconds === recommendedTargetSeconds,
-      }));
-  }, [effectiveTargetSeconds, hasTarget, t]);
-
-  const quickTargetDurationOptions = useMemo(() => {
-    if (!effectiveTargetSeconds) {
-      return [] as number[];
-    }
-
-    const sourceMinutes = Math.max(5, Math.round(effectiveTargetSeconds / 60));
-    const recommendedMinutes = Math.max(
-      5,
-      Math.round((recommendedTargetSeconds ?? effectiveTargetSeconds) / 60),
-    );
-    const candidateSet = new Set(
-      [
-        sourceMinutes - 10,
-        sourceMinutes - 5,
-        sourceMinutes,
-        sourceMinutes + 5,
-        sourceMinutes + 10,
-        sourceMinutes + 15,
-        recommendedMinutes - 10,
-        recommendedMinutes - 5,
-        recommendedMinutes,
-        recommendedMinutes + 5,
-        recommendedMinutes + 10,
-      ].map((minutes) => Math.max(5, Math.min(120, minutes))),
-    );
-
-    return Array.from(candidateSet)
-      .filter((minutes) => minutes >= 5 && minutes <= 120)
-      .sort((a, b) => a - b);
-  }, [effectiveTargetSeconds, recommendedTargetSeconds]);
-
   const currentTargetMinutes = Math.max(5, Math.round((effectiveTargetSeconds || 0) / 60));
   const canDecreaseTarget = currentTargetMinutes > 5;
   const canIncreaseTarget = currentTargetMinutes < 120;
-  const clampTargetMinutes = (value: number) =>
-    Math.max(5, Math.min(120, Math.round(value)));
 
   const announceTargetDuration = (seconds: number) => {
     const subtitle = formatClock(seconds);
@@ -283,28 +217,8 @@ export function WorkoutSessionTimer() {
     updateTargetDuration(current + minutesDelta * 60);
   };
 
-  const commitTargetDurationFromSlider = () => {
-    const pending = pendingTargetDurationRef.current;
-    if (pending === null) {
-      return;
-    }
-    pendingTargetDurationRef.current = null;
-    updateTargetDuration(pending, true);
-  };
-
   const activePresetTargetClass =
     "border-transparent bg-slate-900 text-white dark:bg-white dark:text-slate-900";
-  const inactivePresetTargetClass = [
-    "border-slate-300/70 bg-white/70 text-slate-700",
-    "hover:bg-slate-200/80 dark:border-slate-500/60",
-    "dark:bg-slate-900/80 dark:text-slate-200",
-    "dark:hover:bg-slate-800",
-  ].join(" ");
-
-  const setPresetTarget = (seconds: number) => {
-    if (seconds <= 0) return;
-    updateTargetDuration(seconds);
-  };
 
   const restoreRecommendedTarget = () => {
     if (recommendedTargetSeconds !== null) {
@@ -326,6 +240,7 @@ export function WorkoutSessionTimer() {
 
   return (
     <div className="fixed bottom-36 sm:bottom-20 left-1/2 transform -translate-x-1/2 mb-3 z-50">
+    <div className="fixed left-1/2 top-auto z-[60] mb-3 w-[95vw] max-w-[28rem] transform -translate-x-1/2 bottom-[calc(8rem+env(safe-area-inset-bottom))] sm:bottom-24">
       <div
         className={cn(
           "rounded-full border px-4 py-3 shadow-lg backdrop-blur-sm transition-colors duration-300",
@@ -358,7 +273,7 @@ export function WorkoutSessionTimer() {
 
             {effectiveTargetSeconds ? (
               <>
-                <div className="mt-2 h-1.5 w-full rounded-full bg-slate-200/80 dark:bg-slate-700/70 overflow-hidden">
+                <div className="mt-2 h-2 w-full rounded-full bg-slate-200/80 dark:bg-slate-700/70 overflow-hidden">
                   <div className={cn("h-full transition-all duration-500", tone.bar)} style={{ width: `${progressPercent}%` }} />
                 </div>
 
@@ -369,74 +284,27 @@ export function WorkoutSessionTimer() {
                   </span>
                 </div>
 
-                <div className="mt-2 rounded-md border border-slate-200/70 bg-white/60 p-1 dark:border-slate-500/40 dark:bg-slate-900/35">
-                  <div className="flex items-center gap-1.5 px-2 py-1 text-[10px]">
-                    <Clock3 className="h-3 w-3 opacity-70" />
-                    <span>{t("workout_builder.session.target_duration_label")}</span>
-                    <span className={cn("ml-auto font-semibold", tone.value)}>
-                      {formatClock(effectiveTargetSeconds)}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-1 px-2 pb-1">
-                    {quickTargetDurationOptions.map((minutes) => (
-                      <button
-                        className={cn(
-                          "rounded-full border px-2 py-1 text-[11px] transition-colors",
-                          minutes === currentTargetMinutes
-                            ? activePresetTargetClass
-                            : minutes === Math.max(5, Math.round((recommendedTargetSeconds || 0) / 60))
-                              ? "border-cyan-300/80 bg-cyan-50 text-cyan-700 dark:border-cyan-700/60 dark:bg-cyan-900/40 dark:text-cyan-200"
-                              : inactivePresetTargetClass,
-                        )}
-                        key={`target-${minutes}`}
-                        onClick={() => updateTargetDurationMinutes(minutes)}
-                        type="button"
-                        aria-label={`${t("workout_builder.session.target_duration_label")} ${minutes}${t("workout_builder.session.time_unit_min")}`}
-                      >
-                        {minutes}
-                        {t("workout_builder.session.time_unit_min")}
-                      </button>
-                    ))}
-                    {recommendedTargetSeconds ? (
-                      <button
-                        className={cn(
-                          "rounded-full border px-2 py-1 text-[11px] transition-colors font-medium",
-                          recommendedTargetSeconds === effectiveTargetSeconds
-                            ? activePresetTargetClass
-                            : "border-cyan-300/80 bg-cyan-50 text-cyan-700 dark:border-cyan-700/60 dark:bg-cyan-900/40 dark:text-cyan-200",
+                <div className="mt-2 rounded-md border border-slate-200/70 bg-white/60 p-2 dark:border-slate-500/40 dark:bg-slate-900/35">
+                  <div className="flex items-center justify-between gap-1 text-[11px] text-slate-700 dark:text-slate-200">
+                    <div className="flex items-center gap-1.5">
+                      <Clock3 className="h-3 w-3 opacity-70" />
+                      <span>{t("workout_builder.session.target_duration_label")}</span>
+                    </div>
+                    <button
+                      className={cn(
+                        "rounded-full border px-2 py-1 transition-colors",
+                        effectiveTargetSeconds === recommendedTargetSeconds
+                          ? activePresetTargetClass
+                          : "border-cyan-300/80 bg-cyan-50 text-cyan-700 dark:border-cyan-700/60 dark:bg-cyan-900/40 dark:text-cyan-200",
                       )}
-                        onClick={restoreRecommendedTarget}
-                        type="button"
-                        aria-label={`Restore recommended target duration to ${formatClock(recommendedTargetSeconds)}`}
-                      >
-                        {t("workout_builder.session.target_duration_label")}: {formatClock(recommendedTargetSeconds)}
-                      </button>
-                    ) : null}
-                    {recommendedTargetOptions.map((option) => {
-                      const optionMinutes = Math.round(option.seconds / 60);
-                      if (quickTargetDurationOptions.includes(optionMinutes)) {
-                        return null;
-                      }
-
-                      return (
-                        <button
-                          className={cn(
-                            "rounded-full border px-2 py-1 text-[11px] transition-colors",
-                            option.isRecommended
-                              ? activePresetTargetClass
-                              : option.seconds === effectiveTargetSeconds
-                                ? activePresetTargetClass
-                                : inactivePresetTargetClass,
-                          )}
-                          key={option.seconds}
-                          onClick={() => setPresetTarget(option.seconds)}
-                          type="button"
-                          aria-label={option.label}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
+                      onClick={restoreRecommendedTarget}
+                      type="button"
+                      aria-label={`Restore ${t("workout_builder.session.target_duration_label")} ${formatClock(
+                        recommendedTargetSeconds || effectiveTargetSeconds || 0,
+                      )}`}
+                    >
+                      {formatClock(recommendedTargetSeconds || effectiveTargetSeconds || 0)}
+                    </button>
                   </div>
                 </div>
 
@@ -506,29 +374,11 @@ export function WorkoutSessionTimer() {
                   </span>
                 </div>
                 <div className="mt-2 px-1">
-                  <input
-                    aria-label={t("workout_builder.session.target_duration_label")}
-                    className="h-2 w-full cursor-pointer accent-emerald-500"
-                    max={120}
-                    min={5}
-                    onBlur={commitTargetDurationFromSlider}
-                    onChange={(event) => {
-                      const minutes = clampTargetMinutes(Number(event.target.value));
-                      pendingTargetDurationRef.current = minutes * 60;
-                      setTargetDurationSeconds(minutes * 60);
-                    }}
-                    onKeyUp={commitTargetDurationFromSlider}
-                    onMouseUp={commitTargetDurationFromSlider}
-                    onPointerUp={commitTargetDurationFromSlider}
-                    onPointerDown={() => {
-                      const sliderMinutes = clampTargetMinutes((effectiveTargetSeconds || 0) / 60);
-                      pendingTargetDurationRef.current = sliderMinutes * 60;
-                    }}
-                    onTouchEnd={commitTargetDurationFromSlider}
-                    step={5}
-                    type="range"
-                    value={currentTargetMinutes}
-                  />
+                  <div className="text-[11px] text-slate-500 dark:text-slate-300">
+                    {t("workout_builder.session.target_duration_label")}: {formatClock(
+                      recommendedTargetSeconds || effectiveTargetSeconds || 0,
+                    )}
+                  </div>
                 </div>
               </>
             ) : null}
